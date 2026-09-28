@@ -1,0 +1,15 @@
+node_modules/
+.yarn/*
+!.yarn/releases
+.pnp.*
+dist/
+.output/
+.nuxt/
+.nitro/
+.wrangler/
+.env
+.env.*
+!.env.example
+.dev.vars
+*.ehpk
+.DS_Store
