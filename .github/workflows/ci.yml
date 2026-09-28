@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  pull_request: {}
+  push:
+    branches-ignore: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # setup-node の cache: yarn は yarn を呼ぶため、先に Corepack を有効化して
+      # packageManager で指定した Yarn 4 を使わせる（後にすると runner の Yarn 1 が使われ失敗する）
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "yarn"
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Typecheck
+        run: yarn workspace @departure/api run typecheck
+
+      - name: Lint
+        run: yarn workspace @departure/api run lint
+
+      - name: Test
+        run: yarn workspace @departure/api run test
+
+  glasses:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # setup-node の cache: yarn は yarn を呼ぶため、先に Corepack を有効化して
+      # packageManager で指定した Yarn 4 を使わせる（後にすると runner の Yarn 1 が使われ失敗する）
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "yarn"
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Typecheck
+        run: yarn workspace @departure/glasses run typecheck
+
+      - name: Lint
+        run: yarn workspace @departure/glasses run lint
+
+      - name: Test
+        run: yarn workspace @departure/glasses run test
+
+      - name: Build
+        run: yarn workspace @departure/glasses run build
+        env:
+          VITE_API_BASE_URL: http://localhost:3000
+          # CI の build 検証用のダミー値。本物の API Key ではない（実際の値は Cloudflare Pages 等のデプロイ環境側で設定する）。
+          VITE_API_KEY: ci-dummy-key

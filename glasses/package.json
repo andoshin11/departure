@@ -1,0 +1,30 @@
+{
+  "name": "@departure/glasses",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "package:ehpk": "yarn build && evenhub pack app.json dist -o departure.ehpk --sdk-ver 0.0.16",
+    "simulator": "evenhub-simulator http://localhost:5173"
+  },
+  "dependencies": {
+    "@departure/shared": "workspace:*",
+    "@evenrealities/even_hub_sdk": "0.0.16",
+    "@evenrealities/pretext": "0.1.4"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.15.0",
+    "@evenrealities/evenhub-cli": "0.1.14",
+    "@evenrealities/evenhub-simulator": "0.9.5",
+    "eslint": "^9.15.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "^8.15.0",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
+  }
+}
