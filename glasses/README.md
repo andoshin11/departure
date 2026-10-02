@@ -11,7 +11,8 @@ cp .env.example .env
 ```
 
 - `VITE_API_BASE_URL` / `VITE_API_KEY` は必須。本番ビルド（`yarn build`）は未設定なら失敗し、`yarn dev` は起動時にエラー画面を出す。
-- `VITE_API_BASE_URL` の origin は `app.json` の `permissions[network].whitelist` に含まれている必要がある（`vite-plugins/check-network-whitelist.ts` が dev/build で検証）。本番（`https://departure.shinglish11.workers.dev`）とローカル開発用（`http://localhost:3000`）を登録している。Even Hub へ公開申請する場合は、未使用の `http://localhost:3000` を外すこと。
+- **本番 API の URL はリポジトリに書かない**。コミットしている `app.json` の network whitelist は開発用の `http://localhost:3000` だけで、`yarn package:ehpk`（`scripts/pack.ts`）が `.env.production` の `VITE_API_BASE_URL` の origin を差し込んだパッケージ用の `app.json`（`.pack/app.json`、`.gitignore` 済み）を作ってから `evenhub pack` する。パッケージ用の whitelist は本番の origin だけ（開発用の localhost は外れる）。
+- 本番ビルドでは `VITE_API_BASE_URL` が https であることも検証する（`vite-plugins/check-build-env.ts`）。
 - 環境ごとの値は `.env`（`yarn dev` / シミュレーター。ローカルの api を指す）と `.env.production`（`yarn build` / `yarn package:ehpk`。本番 URL と、Worker secret `NUXT_API_KEY` と同じ値）に置く（どちらも `.gitignore` 済み）。
 - `VITE_API_KEY` は `.ehpk` にそのまま埋め込まれる。個人利用前提の簡易的なアクセス制限であり、強固な秘匿ではない（ODPT のアクセストークンはアプリに含まれず、api/ 側だけが持つ）。
 
@@ -58,16 +59,16 @@ npx evenhub qr --url "http://<LAN IP>:5173"   # 実機（Even App でスキャ�
 
 ## スクリプト
 
-| コマンド            | 内容                                                                    |
-| ------------------- | ----------------------------------------------------------------------- |
-| `yarn dev`          | `vp dev`（開発サーバー）                                                |
-| `yarn build`        | `vp lint`（lint + 型チェック）→ `vp build`（whitelist 検証込み）        |
-| `yarn check`        | `vp check`（フォーマット確認 + lint + 型チェック）。CI はこれを実行する |
-| `yarn lint`         | `vp lint`（Oxlint + tsgolint による型チェック）                         |
-| `yarn fmt`          | `vp fmt`（Oxfmt で整形して書き込む）                                    |
-| `yarn test`         | `vp test`（Vitest。設定は `vitest.config.ts`）                          |
-| `yarn package:ehpk` | `yarn build` → `evenhub pack ... -o departure.ehpk --sdk-ver 0.0.16`    |
-| `yarn simulator`    | `evenhub-simulator http://localhost:5173`                               |
+| コマンド            | 内容                                                                              |
+| ------------------- | --------------------------------------------------------------------------------- |
+| `yarn dev`          | `vp dev`（開発サーバー）                                                          |
+| `yarn build`        | `vp lint`（lint + 型チェック）→ `vp build`（whitelist 検証込み）                  |
+| `yarn check`        | `vp check`（フォーマット確認 + lint + 型チェック）。CI はこれを実行する           |
+| `yarn lint`         | `vp lint`（Oxlint + tsgolint による型チェック）                                   |
+| `yarn fmt`          | `vp fmt`（Oxfmt で整形して書き込む）                                              |
+| `yarn test`         | `vp test`（Vitest。設定は `vitest.config.ts`）                                    |
+| `yarn package:ehpk` | `yarn build` → `scripts/pack.ts`（パッケージ用 app.json を作って `evenhub pack`） |
+| `yarn simulator`    | `evenhub-simulator http://localhost:5173`                                         |
 
 ### Vite+ の導入方法（このモノレポでの注意点）
 
@@ -79,7 +80,7 @@ npx evenhub qr --url "http://<LAN IP>:5173"   # 実機（Even App でスキャ�
 - lint の設定は旧 ESLint 設定（eslint:recommended + typescript-eslint recommended）相当。Oxlint の `correctness` に含まれない typescript-eslint recommended のルールは `vite.config.ts` で個別に有効化している（存在しないルール名を書くと `vp lint` がエラーになる）。
 - 型チェックは Oxlint の型チェック（`lint.options.typeCheck`。tsgolint / TypeScript Go）で行い、`tsc --noEmit` は使わない。tsgolint は TypeScript 7 系なので、`devDependencies` の `typescript`（5.9.3）はエディタ向け。
   - ドキュメントにある型チェックだけの実行（`vp check --no-fmt --no-lint`）は、このワークスペース構成では「No checks enabled」で失敗するため使わない（原因は未確認。ドキュメントにある「ワークスペースのパッケージからは root の lint 設定を使う」挙動との関係を疑っているが、検証していない）。`vp lint` が型チェックも行う。
-- `vite-plugins/check-network-whitelist.ts` の本番ビルド判定は `command === 'build' && mode === 'production'`。Oxlint / Oxfmt が `vite.config.ts` の `lint` / `fmt` ブロックを読むときに、`resolveConfig(..., 'build')` を mode=development で呼ぶため。
+- `vite-plugins/check-build-env.ts` の本番ビルド判定は `command === 'build' && mode === 'production'`。Oxlint / Oxfmt が `vite.config.ts` の `lint` / `fmt` ブロックを読むときに、`resolveConfig(..., 'build')` を mode=development で呼ぶため。
 
 ## 構成
 

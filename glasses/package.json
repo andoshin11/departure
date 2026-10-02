@@ -10,7 +10,7 @@
     "lint": "vp lint",
     "fmt": "vp fmt",
     "test": "vp test",
-    "package:ehpk": "yarn build && evenhub pack app.json dist -o departure.ehpk --sdk-ver 0.0.16",
+    "package:ehpk": "yarn build && node scripts/pack.ts",
     "simulator": "evenhub-simulator http://localhost:5173"
   },
   "dependencies": {

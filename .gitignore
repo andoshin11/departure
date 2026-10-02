@@ -13,3 +13,4 @@ dist/
 .dev.vars
 *.ehpk
 .DS_Store
+.pack/

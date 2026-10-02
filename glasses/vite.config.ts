@@ -1,10 +1,10 @@
 import { defineConfig } from 'vite-plus'
-import { checkNetworkWhitelist } from './vite-plugins/check-network-whitelist.ts'
+import { checkBuildEnv } from './vite-plugins/check-build-env.ts'
 
 export default defineConfig({
   server: { host: true, port: 5173 },
   build: { target: 'esnext' },
-  plugins: [checkNetworkWhitelist()],
+  plugins: [checkBuildEnv()],
 
   // `vp fmt` / `vp check`（Oxfmt）。既存コードのスタイル（セミコロンなし・シングルクォート）に合わせ、
   // 整形による差分が最小になる行幅にしている。
