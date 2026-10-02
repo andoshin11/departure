@@ -145,3 +145,18 @@ export function parseStationTimetables(data: unknown): OdptStationTimetable[] {
     }
   })
 }
+
+/**
+ * owl:sameAs の複数指定（カンマ区切り = OR 条件）で1リクエストに含められる ID の上限。
+ * 11件以上だと ODPT は 400 "too many OR condition in owl:sameAs" を返す
+ * （2026-10-02 に odpt:Station / Railway / RailDirection / TrainType で実測）。
+ */
+export const SAME_AS_MAX_VALUES = 10
+
+/** ID の列を、owl:sameAs の複数指定の上限ごとのバッチに分ける */
+export function batchSameAsIds(ids: string[], size: number = SAME_AS_MAX_VALUES): string[][] {
+  if (size <= 0) throw new Error(`batchSameAsIds: size は正の数である必要があります (size=${size})`)
+  const batches: string[][] = []
+  for (let i = 0; i < ids.length; i += size) batches.push(ids.slice(i, i + size))
+  return batches
+}

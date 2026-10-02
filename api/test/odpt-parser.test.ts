@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extractTitle, parseStations, parseStationTimetables } from '#server/utils/odpt-parser'
+import { SAME_AS_MAX_VALUES, batchSameAsIds, extractTitle, parseStations, parseStationTimetables } from '#server/utils/odpt-parser'
 import { odptStation, odptTimetable } from './fixtures/odpt'
 
 describe('parseStations', () => {
@@ -75,5 +75,25 @@ describe('extractTitle', () => {
 
   it('owl:sameAs が無ければ例外', () => {
     expect(() => extractTitle('odpt:Operator', { 'dc:title': 'x' }, 'x')).toThrow()
+  })
+})
+
+describe('batchSameAsIds', () => {
+  const ids = (n: number) => Array.from({ length: n }, (_, i) => `odpt.Station:X.Y.S${i}`)
+
+  it('ODPT の OR 条件の上限（10件）を超えないバッチに分ける', () => {
+    expect(SAME_AS_MAX_VALUES).toBe(10)
+    expect(batchSameAsIds(ids(10)).map((b) => b.length)).toEqual([10])
+    expect(batchSameAsIds(ids(11)).map((b) => b.length)).toEqual([10, 1])
+    expect(batchSameAsIds(ids(25)).map((b) => b.length)).toEqual([10, 10, 5])
+  })
+
+  it('順序を保ち、ID を失ったり重複させたりしない', () => {
+    expect(batchSameAsIds(ids(23)).flat()).toEqual(ids(23))
+  })
+
+  it('0件なら空配列、size が 0 以下なら例外', () => {
+    expect(batchSameAsIds([])).toEqual([])
+    expect(() => batchSameAsIds(ids(1), 0)).toThrow()
   })
 })

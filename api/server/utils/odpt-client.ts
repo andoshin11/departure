@@ -3,6 +3,7 @@ import { hash } from 'ohash'
 import { defineCachedFunction, useRuntimeConfig } from 'nitropack/runtime'
 import {
   asArray,
+  batchSameAsIds,
   extractTitle,
   parseStations,
   parseStationTimetables,
@@ -20,8 +21,6 @@ import {
 const TITLE_CACHE_MAX_AGE_SECONDS = 60 * 60 * 24
 /** 駅時刻表のキャッシュ期間。ダイヤ改正は事前告知されるので数時間の遅れは許容する */
 const TIMETABLE_CACHE_MAX_AGE_SECONDS = 60 * 60 * 6
-/** owl:sameAs の複数指定（カンマ区切り）1リクエストあたりの ID 数。URL 長を抑えるため */
-const SAME_AS_BATCH_SIZE = 50
 
 interface OdptConfig {
   baseUrl: string
@@ -137,9 +136,7 @@ export async function lookupTitles(event: H3Event, type: TitledType, ids: string
   if (unique.length === 0) return new Map()
   const config = readOdptConfig(event)
 
-  const batches: string[][] = []
-  for (let i = 0; i < unique.length; i += SAME_AS_BATCH_SIZE) batches.push(unique.slice(i, i + SAME_AS_BATCH_SIZE))
-  const results = await Promise.all(batches.map((batch) => cachedTitles(config, type, batch)))
+  const results = await Promise.all(batchSameAsIds(unique).map((batch) => cachedTitles(config, type, batch)))
 
   const titles = new Map(results.flat())
   const missing = unique.filter((id) => !titles.has(id))
