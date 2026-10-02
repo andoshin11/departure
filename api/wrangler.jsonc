@@ -3,19 +3,19 @@
   "name": "departure",
   // account_id はリポジトリに書かない。デプロイ時は環境変数 CLOUDFLARE_ACCOUNT_ID で渡す
   // （GitHub Actions では Secret から。手元では `wrangler login` 済みならアカウントは自動で決まる）。
-  "main": "./.output/server/index.mjs",
+  "main": "./src/index.ts",
   "compatibility_date": "2026-09-28",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
-  "assets": {
-    "directory": "./.output/public",
-    "binding": "ASSETS"
+  // secret（API_KEY / ODPT_CONSUMER_KEY）はここに書かない。本番は `wrangler secret put`、ローカルは .dev.vars。
+  "vars": {
+    "ODPT_BASE_URL": "https://api.odpt.org/api/v4",
   },
   "kv_namespaces": [
     {
       "binding": "CACHE",
       // `wrangler kv namespace create departure-cache` で作成（KV namespace: departure-cache）
-      "id": "919f3bfff0ac45bba27c2e91666977f1"
-    }
-  ]
+      "id": "919f3bfff0ac45bba27c2e91666977f1",
+    },
+  ],
 }

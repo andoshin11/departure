@@ -11,7 +11,7 @@ Even Realities G2 向けの「最寄り駅から次に発車する電車」を�
 | ディレクトリ | 内容 |
 | --- | --- |
 | [`glasses/`](glasses/README.md) | G2 アプリ本体（Vite + TypeScript + `@evenrealities/even_hub_sdk`） |
-| [`api/`](api/README.md) | ODPT を中継する API（Nuxt 4 server routes → Cloudflare Workers）。ODPT のアクセストークンをアプリに埋め込まないためのもの |
+| [`api/`](api/README.md) | ODPT を中継する API（Hono → Cloudflare Workers）。ODPT のアクセストークンをアプリに埋め込まないためのもの |
 | `shared/` | api と glasses の間の契約（レスポンス型・定数） |
 
 ## 画面
@@ -41,7 +41,7 @@ flowchart LR
   end
 
   subgraph CF["Cloudflare Workers"]
-    API["api/<br/>Nuxt 4 server routes"]
+    API["api/<br/>Hono"]
     KV[("Workers KV<br/>時刻表・名称キャッシュ")]
   end
 
@@ -157,7 +157,7 @@ corepack enable
 yarn install
 
 # api: ODPT のアクセストークン等を設定して起動（詳細は api/README.md）
-cp api/.env.example api/.env
+cp api/.dev.vars.example api/.dev.vars
 yarn workspace @departure/api dev
 
 # glasses: 別ターミナルで（詳細は glasses/README.md）

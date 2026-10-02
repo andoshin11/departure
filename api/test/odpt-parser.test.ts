@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SAME_AS_MAX_VALUES, batchSameAsIds, extractTitle, parseStations, parseStationTimetables } from '#server/utils/odpt-parser'
+import { SAME_AS_MAX_VALUES, batchSameAsIds, extractTitle, parseStations, parseStationTimetables } from '../src/utils/odpt-parser'
 import { odptStation, odptTimetable } from './fixtures/odpt'
 
 describe('parseStations', () => {
@@ -34,7 +34,11 @@ describe('parseStations', () => {
 describe('parseStationTimetables', () => {
   it('時刻表を取り出し、到着のみ（終着）の列車は除外する', () => {
     const tt = odptTimetable('TokyoMetro.Asakusa', 'Weekday', [
-      { 'odpt:departureTime': '05:01', 'odpt:destinationStation': ['odpt.Station:TokyoMetro.Ginza.Asakusa'], 'odpt:trainType': 'odpt.TrainType:TokyoMetro.Local' },
+      {
+        'odpt:departureTime': '05:01',
+        'odpt:destinationStation': ['odpt.Station:TokyoMetro.Ginza.Asakusa'],
+        'odpt:trainType': 'odpt.TrainType:TokyoMetro.Local',
+      },
       { 'odpt:arrivalTime': '05:10', 'odpt:destinationStation': ['odpt.Station:TokyoMetro.Ginza.Shibuya'] },
       { 'odpt:departureTime': '00:10', 'odpt:isLast': true },
     ])
@@ -44,7 +48,12 @@ describe('parseStationTimetables', () => {
         railDirectionId: 'odpt.RailDirection:TokyoMetro.Asakusa',
         calendarId: 'odpt.Calendar:Weekday',
         entries: [
-          { departureTime: '05:01', destinationStationIds: ['odpt.Station:TokyoMetro.Ginza.Asakusa'], trainTypeId: 'odpt.TrainType:TokyoMetro.Local', isLast: false },
+          {
+            departureTime: '05:01',
+            destinationStationIds: ['odpt.Station:TokyoMetro.Ginza.Asakusa'],
+            trainTypeId: 'odpt.TrainType:TokyoMetro.Local',
+            isLast: false,
+          },
           { departureTime: '00:10', destinationStationIds: [], trainTypeId: null, isLast: true },
         ],
       },
@@ -68,7 +77,10 @@ describe('parseStationTimetables', () => {
 
 describe('extractTitle', () => {
   it('型ごとの多言語タイトル（ja）→ dc:title の順で採用し、どちらも無ければ null', () => {
-    expect(extractTitle('odpt:Railway', { 'owl:sameAs': 'r', 'odpt:railwayTitle': { ja: '銀座線', en: 'Ginza' } }, 'x')).toEqual({ id: 'r', title: '銀座線' })
+    expect(extractTitle('odpt:Railway', { 'owl:sameAs': 'r', 'odpt:railwayTitle': { ja: '銀座線', en: 'Ginza' } }, 'x')).toEqual({
+      id: 'r',
+      title: '銀座線',
+    })
     expect(extractTitle('odpt:RailDirection', { 'owl:sameAs': 'd', 'dc:title': '浅草方面' }, 'x')).toEqual({ id: 'd', title: '浅草方面' })
     expect(extractTitle('odpt:TrainType', { 'owl:sameAs': 't' }, 'x')).toEqual({ id: 't', title: null })
   })

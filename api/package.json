@@ -4,27 +4,29 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "postinstall": "nuxt prepare",
-    "dev": "nuxt dev",
-    "build": "nuxt build",
-    "preview": "nuxt build && wrangler dev",
-    "typecheck": "nuxi typecheck",
-    "lint": "eslint .",
-    "deploy": "wrangler deploy",
-    "test": "vitest run"
+    "dev": "wrangler dev --port 3000",
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "check": "vp check",
+    "lint": "vp lint",
+    "fmt": "vp fmt",
+    "test": "vp test",
+    "deploy": "wrangler deploy"
   },
   "dependencies": {
     "@departure/shared": "workspace:*",
     "@holiday-jp/holiday_jp": "^2.5.2",
+    "hono": "^4.13.12",
     "ohash": "^2.0.11"
   },
   "devDependencies": {
-    "@nuxt/eslint": "^1.17.0",
-    "eslint": "^10.11.0",
-    "nuxt": "^4.5.2",
+    "@cloudflare/workers-types": "^5.20260928.1",
     "typescript": "5.9.3",
-    "vitest": "^5.0.2",
-    "vue-tsc": "^3.3.11",
+    "vite": "npm:@voidzero-dev/vite-plus-core@1.0.0",
+    "vite-plus": "1.0.0",
+    "vitest": "5.0.1",
     "wrangler": "^4.141.0"
+  },
+  "installConfig": {
+    "hoistingLimits": "workspaces"
   }
 }

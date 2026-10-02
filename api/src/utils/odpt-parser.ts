@@ -197,4 +197,3 @@ export function parseTrainInformation(data: unknown): OdptTrainInformation[] {
     }
   })
 }
-

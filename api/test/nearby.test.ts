@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { distanceMeters, groupStationsByName } from '#server/utils/nearby'
-import type { OdptStation } from '#server/utils/odpt-parser'
+import { distanceMeters, groupStationsByName } from '../src/utils/nearby'
+import type { OdptStation } from '../src/utils/odpt-parser'
 
 function station(id: string, title: string, lat: number, lon: number): OdptStation {
   const [operator, railway] = id.split('.')
-  return { id: `odpt.Station:${id}`, title, railwayId: `odpt.Railway:${operator}.${railway}`, operatorId: `odpt.Operator:${operator}`, lat, lon }
+  return {
+    id: `odpt.Station:${id}`,
+    title,
+    railwayId: `odpt.Railway:${operator}.${railway}`,
+    operatorId: `odpt.Operator:${operator}`,
+    lat,
+    lon,
+  }
 }
 
 describe('distanceMeters', () => {
@@ -37,15 +44,31 @@ describe('groupStationsByName', () => {
       name: '渋谷',
       distanceMeters: 0,
       railways: [
-        { stationId: 'odpt.Station:TokyoMetro.Ginza.Shibuya', railwayId: 'odpt.Railway:TokyoMetro.Ginza', railwayName: '銀座線', operatorName: '東京メトロ' },
-        { stationId: 'odpt.Station:TokyoMetro.Hanzomon.Shibuya', railwayId: 'odpt.Railway:TokyoMetro.Hanzomon', railwayName: '半蔵門線', operatorName: '東京メトロ' },
+        {
+          stationId: 'odpt.Station:TokyoMetro.Ginza.Shibuya',
+          railwayId: 'odpt.Railway:TokyoMetro.Ginza',
+          railwayName: '銀座線',
+          operatorName: '東京メトロ',
+        },
+        {
+          stationId: 'odpt.Station:TokyoMetro.Hanzomon.Shibuya',
+          railwayId: 'odpt.Railway:TokyoMetro.Hanzomon',
+          railwayName: '半蔵門線',
+          operatorName: '東京メトロ',
+        },
       ],
     })
     expect(result[1]!.distanceMeters).toBeGreaterThan(1000)
   })
 
   it('名前を解決できない路線・事業者は ID から名前を組み立てる', () => {
-    const [s] = groupStationsByName({ stations: [station('Keio.Inokashira.Shibuya', '渋谷', 0, 0)], lat: 0, lon: 0, railwayTitles, operatorTitles })
+    const [s] = groupStationsByName({
+      stations: [station('Keio.Inokashira.Shibuya', '渋谷', 0, 0)],
+      lat: 0,
+      lon: 0,
+      railwayTitles,
+      operatorTitles,
+    })
     expect(s!.railways[0]).toMatchObject({ railwayName: 'Inokashira', operatorName: 'Keio' })
   })
 
