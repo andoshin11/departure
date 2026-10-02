@@ -1,7 +1,7 @@
 # 次の電車 (departure)
 
 Even Realities G2 向けの「最寄り駅から次に発車する電車」をすぐ確認するアプリ。
-[公共交通オープンデータ（ODPT）](https://developer.odpt.org/) の駅・駅時刻表データを使う。
+[公共交通オープンデータ（ODPT）](https://developer.odpt.org/) の駅・駅時刻表データを使う（出典とライセンスは[「データの出典とライセンス」](#データの出典とライセンス)を参照）。
 構成は [even-hatena-reader](https://github.com/andoshin11/even-hatena-reader) を踏襲している。
 
 | ディレクトリ | 内容 |
@@ -158,3 +158,34 @@ yarn workspace @departure/glasses simulator
 ```
 
 Node.js は `.nvmrc`（24）を使う。
+
+## データの出典とライセンス
+
+このアプリおよびこのリポジトリの成果物（ドキュメント・図・スクリーンショット等を含む）は、[公共交通オープンデータセンター](https://www.odpt.org/)において提供される公共交通データを利用しています。
+
+公共交通事業者により提供されたデータを元にしていますが、必ずしも正確・完全なものとは限りません。本アプリの表示内容について、公共交通事業者への直接の問い合わせは行わないでください。
+
+### 利用しているデータとライセンス
+
+| 提供者 | データセット | ライセンス |
+| --- | --- | --- |
+| 東京地下鉄株式会社（東京メトロ） | [駅情報](https://ckan.odpt.org/dataset/r_station-tokyometro)、[駅時刻表](https://ckan.odpt.org/dataset/r_station_timetable-tokyometro)、[路線系統情報](https://ckan.odpt.org/dataset/r_route-tokyometro) | [公共交通オープンデータ基本ライセンス](https://developer.odpt.org/terms/data_basic_license.html) |
+| 東京都交通局（都営） | [駅情報](https://ckan.odpt.org/dataset/r_station-toei)、[駅時刻表](https://ckan.odpt.org/dataset/r_station_timetable-toei)、[路線系統情報](https://ckan.odpt.org/dataset/r_route-toei) | [クリエイティブ・コモンズ・ライセンス 表示 4.0 国際（CC BY 4.0）](https://creativecommons.org/licenses/by/4.0/deed.ja) |
+
+東京都交通局のデータについてのクレジット表記（このアプリは時刻表から次の発車予定を選んで表示するため、改変して利用しています）:
+
+> このアプリは、以下の著作物を改変して利用しています。
+> 東京都交通局・公共交通オープンデータ協議会、東京都交通局 駅情報・駅時刻表・路線系統情報、クリエイティブ・コモンズ・ライセンス　表示4.0国際（https://creativecommons.org/licenses/by/4.0/deed.ja）
+
+### 遵守している規約
+
+- [公共交通オープンデータセンター利用規約](https://developer.odpt.org/terms/center_use_rules.html)
+- [公共交通オープンデータ基本ライセンス](https://developer.odpt.org/terms/data_basic_license.html)
+- [公共交通オープンデータ開発者ガイドライン](https://developer.odpt.org/terms/data_basic_use_guideline.html)
+
+### このリポジトリでの扱い
+
+- このリポジトリには ODPT から取得したデータを含めていません（テストで使うデータは架空のものです）。データは `api/` が実行時に取得し、アプリの表示のためだけにキャッシュします。
+- ODPT のアクセストークンはリポジトリにもアプリ（`.ehpk`）にも含めず、`api/` の実行環境（Cloudflare Workers の secret）にだけ置いています。
+- このアプリについての記事・スクリーンショット等を公開する場合も、上記の出典とクレジットを記載してください（開発者ガイドライン 3.2）。
+
