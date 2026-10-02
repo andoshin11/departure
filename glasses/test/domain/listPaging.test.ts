@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { paginateCursorList } from '../../src/domain/listPaging'
 
 // buildListPages（▲▼ ナビ行込みの List 専用ページング）は List コンテナ廃止に伴い削除した。

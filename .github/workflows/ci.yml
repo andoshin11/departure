@@ -62,11 +62,9 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
-      - name: Typecheck
-        run: yarn workspace @departure/glasses run typecheck
-
-      - name: Lint
-        run: yarn workspace @departure/glasses run lint
+      # Vite+（vp check）: Oxfmt のフォーマット確認 + Oxlint + 型チェック（tsgolint）を1回で行う
+      - name: Check (format, lint, type check)
+        run: yarn workspace @departure/glasses run check
 
       - name: Test
         run: yarn workspace @departure/glasses run test

@@ -66,8 +66,11 @@ export const MAX_TEXT_BYTES = 999
 
 /** 選択中の行の先頭に付けるカーソル記号。 */
 export const CURSOR_MARK = '▶ '
-/** 非選択行の先頭を埋める、CURSOR_MARK と同じ文字数の空白。画素幅は概ね同等だが厳密一致は求めない。 */
-export const CURSOR_BLANK = ' '.repeat([...CURSOR_MARK].length)
+/**
+ * 非選択行の先頭を埋める、CURSOR_MARK と同じ文字数の空白。画素幅は概ね同等だが厳密一致は求めない。
+ * 文字数は見た目の1文字（書記素クラスタ）単位で数える（コードポイント単位だと絵文字等で数がずれるため）。
+ */
+export const CURSOR_BLANK = ' '.repeat([...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(CURSOR_MARK)].length)
 
 /** 最寄り駅を探す半径（m）。徒歩圏を想定 */
 export const NEARBY_RADIUS_METERS = 1000

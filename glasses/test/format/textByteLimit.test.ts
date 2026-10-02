@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { assertWithinTextByteLimit, utf8ByteLength } from '../../src/format/textByteLimit'
 import { MAX_TEXT_BYTES } from '../../src/constants'
 
@@ -45,9 +45,7 @@ describe('assertWithinTextByteLimit', () => {
 
   it('例外メッセージに label・実際のバイト数・上限バイト数が含まれる', () => {
     const text = 'a'.repeat(MAX_TEXT_BYTES + 1)
-    expect(() => assertWithinTextByteLimit(text, 'pager')).toThrowError(
-      new RegExp(`pager.*${MAX_TEXT_BYTES + 1}.*${MAX_TEXT_BYTES}`, 's'),
-    )
+    expect(() => assertWithinTextByteLimit(text, 'pager')).toThrowError(new RegExp(`pager.*${MAX_TEXT_BYTES + 1}.*${MAX_TEXT_BYTES}`, 's'))
   })
 
   it('日本語で MAX_TEXT_BYTES を超える境界（文字数ベースでは短く見えても実バイト数で判定される）', () => {
