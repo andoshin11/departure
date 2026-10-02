@@ -1,16 +1,28 @@
 import { describe, expect, it, vi } from 'vitest'
-import { buildDirections, collectReferencedIds, selectUpcoming, nameFromOdptId } from '#server/utils/departures'
-import type { OdptStationTimetable, OdptTimetableEntry } from '#server/utils/odpt-parser'
+import { buildDirections, collectReferencedIds, selectUpcoming, nameFromOdptId } from '../src/utils/departures'
+import type { OdptStationTimetable, OdptTimetableEntry } from '../src/utils/odpt-parser'
 
 function entry(departureTime: string, overrides: Partial<OdptTimetableEntry> = {}): OdptTimetableEntry {
-  return { departureTime, destinationStationIds: ['odpt.Station:M.G.Asakusa'], trainTypeId: 'odpt.TrainType:M.Local', isLast: false, ...overrides }
+  return {
+    departureTime,
+    destinationStationIds: ['odpt.Station:M.G.Asakusa'],
+    trainTypeId: 'odpt.TrainType:M.Local',
+    isLast: false,
+    ...overrides,
+  }
 }
 
 function timetable(calendar: string, times: string[], direction: string | null = 'odpt.RailDirection:M.Asakusa'): OdptStationTimetable {
-  return { railwayId: 'odpt.Railway:M.G', railDirectionId: direction, calendarId: `odpt.Calendar:${calendar}`, entries: times.map((t) => entry(t)) }
+  return {
+    railwayId: 'odpt.Railway:M.G',
+    railDirectionId: direction,
+    calendarId: `odpt.Calendar:${calendar}`,
+    entries: times.map((t) => entry(t)),
+  }
 }
 
-const times = (candidates: ReturnType<typeof selectUpcoming>) => candidates.map((c) => `${c.nextServiceDay ? '翌' : ''}${c.entry.departureTime}`)
+const times = (candidates: ReturnType<typeof selectUpcoming>) =>
+  candidates.map((c) => `${c.nextServiceDay ? '翌' : ''}${c.entry.departureTime}`)
 
 describe('selectUpcoming', () => {
   // 2026-09-28 は月曜（平日）、2026-09-26 は土曜
@@ -46,8 +58,14 @@ describe('selectUpcoming', () => {
 
 describe('buildDirections', () => {
   const titles = {
-    stationTitles: new Map([['odpt.Station:M.G.Asakusa', '浅草'], ['odpt.Station:M.G.Shibuya', '渋谷']]),
-    railDirectionTitles: new Map([['odpt.RailDirection:M.Asakusa', '浅草方面'], ['odpt.RailDirection:M.Shibuya', '渋谷方面']]),
+    stationTitles: new Map([
+      ['odpt.Station:M.G.Asakusa', '浅草'],
+      ['odpt.Station:M.G.Shibuya', '渋谷'],
+    ]),
+    railDirectionTitles: new Map([
+      ['odpt.RailDirection:M.Asakusa', '浅草方面'],
+      ['odpt.RailDirection:M.Shibuya', '渋谷方面'],
+    ]),
     trainTypeTitles: new Map([['odpt.TrainType:M.Local', '各停']]),
   }
   const moment = { date: '2026-09-28', minutes: 12 * 60 }

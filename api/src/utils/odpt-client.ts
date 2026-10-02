@@ -1,6 +1,7 @@
-import { createError, type H3Event } from 'h3'
+import { HTTPException } from 'hono/http-exception'
 import { hash } from 'ohash'
-import { defineCachedFunction, useRuntimeConfig } from 'nitropack/runtime'
+import { requireVar, type Bindings } from '../env'
+import { cached } from './kv-cache'
 import {
   asArray,
   batchSameAsIds,
@@ -12,10 +13,10 @@ import {
   type OdptStationTimetable,
   type OdptTrainInformation,
   type TitledType,
-} from '#server/utils/odpt-parser'
+} from './odpt-parser'
 
 // ODPT API (v4) へのアクセスを1箇所に集約する。
-// - consumerKey は runtimeConfig（NUXT_ODPT_CONSUMER_KEY）から読み、未設定なら 500（fail-fast）。
+// - consumerKey は Worker の環境（ODPT_CONSUMER_KEY）から読み、未設定なら 500（fail-fast）。
 // - upstream の失敗（ネットワーク・非2xx・形式不正）はすべて 502 に変換し、原因をログに残す。
 // - 自動リトライはしない。
 
@@ -34,13 +35,17 @@ interface OdptConfig {
   consumerKey: string
 }
 
-function readOdptConfig(event: H3Event | undefined): OdptConfig {
-  const config = useRuntimeConfig(event)
-  if (!config.odptConsumerKey) {
-    console.error('[odpt] NUXT_ODPT_CONSUMER_KEY is not configured on the server')
-    throw createError({ statusCode: 500, statusMessage: 'Server misconfiguration: ODPT consumer key is not set' })
+/** ODPT へのアクセスに必要なもの一式。リクエストごとに odptContext(c.env) で作る */
+export interface OdptContext {
+  config: OdptConfig
+  cache: KVNamespace
+}
+
+export function odptContext(env: Bindings): OdptContext {
+  return {
+    config: { baseUrl: requireVar(env, 'ODPT_BASE_URL'), consumerKey: requireVar(env, 'ODPT_CONSUMER_KEY') },
+    cache: env.CACHE,
   }
-  return { baseUrl: config.odptBaseUrl, consumerKey: config.odptConsumerKey }
 }
 
 /** path は "odpt:Station" や "places/odpt:Station" 等。ログにはアクセストークンを出さない */
@@ -54,20 +59,20 @@ async function odptGet(config: OdptConfig, path: string, params: Record<string, 
     response = await fetch(`${config.baseUrl}/${path}?${query.toString()}`)
   } catch (error) {
     console.error(`[odpt] network error: url=${logUrl}`, error)
-    throw createError({ statusCode: 502, statusMessage: `Failed to reach ODPT API (${path}): ${(error as Error).message}` })
+    throw new HTTPException(502, { message: `Failed to reach ODPT API (${path}): ${(error as Error).message}` })
   }
 
   if (!response.ok) {
     const body = await response.text().catch(() => '<unreadable>')
     console.error(`[odpt] upstream error: url=${logUrl} status=${response.status} body=${body.slice(0, 500)}`)
-    throw createError({ statusCode: 502, statusMessage: `ODPT API returned ${response.status} (${path})` })
+    throw new HTTPException(502, { message: `ODPT API returned ${response.status} (${path})` })
   }
 
   try {
     return await response.json()
   } catch (error) {
     console.error(`[odpt] invalid JSON: url=${logUrl}`, error)
-    throw createError({ statusCode: 502, statusMessage: `ODPT API returned invalid JSON (${path})` })
+    throw new HTTPException(502, { message: `ODPT API returned invalid JSON (${path})` })
   }
 }
 
@@ -77,66 +82,48 @@ function parseOr502<T>(path: string, parse: () => T): T {
     return parse()
   } catch (error) {
     console.error(`[odpt] unexpected response structure: path=${path}`, error)
-    throw createError({ statusCode: 502, statusMessage: `Unexpected ODPT response structure (${path}): ${(error as Error).message}` })
+    throw new HTTPException(502, { message: `Unexpected ODPT response structure (${path}): ${(error as Error).message}` })
   }
 }
 
-export async function fetchNearbyStations(event: H3Event, lat: number, lon: number, radius: number): Promise<OdptStation[]> {
-  const config = readOdptConfig(event)
+export async function fetchNearbyStations({ config }: OdptContext, lat: number, lon: number, radius: number): Promise<OdptStation[]> {
   const path = 'places/odpt:Station'
   const data = await odptGet(config, path, { lat: String(lat), lon: String(lon), radius: String(radius) })
   return parseOr502(path, () => parseStations(data))
 }
 
-export async function fetchStation(event: H3Event, stationId: string): Promise<OdptStation | undefined> {
-  const config = readOdptConfig(event)
+export async function fetchStation({ config }: OdptContext, stationId: string): Promise<OdptStation | undefined> {
   const path = 'odpt:Station'
   const data = await odptGet(config, path, { 'owl:sameAs': stationId })
   return parseOr502(path, () => parseStations(data))[0]
 }
 
-const cachedStationTimetables = defineCachedFunction(
-  async (config: OdptConfig, stationId: string): Promise<OdptStationTimetable[]> => {
+export function fetchStationTimetables({ config, cache }: OdptContext, stationId: string): Promise<OdptStationTimetable[]> {
+  return cached(cache, { name: 'odpt-station-timetable', key: stationId, maxAgeSeconds: TIMETABLE_CACHE_MAX_AGE_SECONDS }, async () => {
     const path = 'odpt:StationTimetable'
     const data = await odptGet(config, path, { 'odpt:station': stationId })
     return parseOr502(path, () => parseStationTimetables(data))
-  },
-  {
-    maxAge: TIMETABLE_CACHE_MAX_AGE_SECONDS,
-    swr: false,
-    name: 'odpt-station-timetable',
-    getKey: (_config: OdptConfig, stationId: string) => stationId,
-  },
-)
-
-const cachedTrainInformation = defineCachedFunction(
-  async (config: OdptConfig, railwayId: string): Promise<OdptTrainInformation[]> => {
-    const path = 'odpt:TrainInformation'
-    const data = await odptGet(config, path, { 'odpt:railway': railwayId })
-    return parseOr502(path, () => parseTrainInformation(data))
-  },
-  {
-    maxAge: TRAIN_INFORMATION_CACHE_MAX_AGE_SECONDS,
-    swr: false,
-    name: 'odpt-train-information',
-    getKey: (_config: OdptConfig, railwayId: string) => railwayId,
-  },
-)
-
-/** 路線の運行情報（odpt:TrainInformation）。失敗時は他の ODPT 呼び出しと同じく 502 の H3Error を投げる */
-export function fetchTrainInformation(event: H3Event, railwayId: string): Promise<OdptTrainInformation[]> {
-  return cachedTrainInformation(readOdptConfig(event), railwayId)
+  })
 }
 
-export function fetchStationTimetables(event: H3Event, stationId: string): Promise<OdptStationTimetable[]> {
-  return cachedStationTimetables(readOdptConfig(event), stationId)
+/** 路線の運行情報（odpt:TrainInformation）。失敗時は他の ODPT 呼び出しと同じく 502 の HTTPException を投げる */
+export function fetchTrainInformation({ config, cache }: OdptContext, railwayId: string): Promise<OdptTrainInformation[]> {
+  return cached(
+    cache,
+    { name: 'odpt-train-information', key: railwayId, maxAgeSeconds: TRAIN_INFORMATION_CACHE_MAX_AGE_SECONDS },
+    async () => {
+      const path = 'odpt:TrainInformation'
+      const data = await odptGet(config, path, { 'odpt:railway': railwayId })
+      return parseOr502(path, () => parseTrainInformation(data))
+    },
+  )
 }
 
 /**
  * ID の集合1つぶん（ソート済み）をキーにキャッシュする。Cloudflare KV のキー長上限（512バイト）を
  * 超えないよう、ID の列はハッシュ化してキーにする。戻り値は [id, title] の配列（KV に JSON で保存するため Map にしない） */
-const cachedTitles = defineCachedFunction(
-  async (config: OdptConfig, type: TitledType, ids: string[]): Promise<[string, string][]> => {
+function fetchTitles({ config, cache }: OdptContext, type: TitledType, ids: string[]): Promise<[string, string][]> {
+  return cached(cache, { name: 'odpt-titles', key: `${type}:${hash(ids)}`, maxAgeSeconds: TITLE_CACHE_MAX_AGE_SECONDS }, async () => {
     const data = await odptGet(config, type, { 'owl:sameAs': ids.join(',') })
     return parseOr502(type, () =>
       asArray(data, `${type} response`)
@@ -144,25 +131,18 @@ const cachedTitles = defineCachedFunction(
         .filter((t): t is { id: string; title: string } => t.title !== null)
         .map((t) => [t.id, t.title] as [string, string]),
     )
-  },
-  {
-    maxAge: TITLE_CACHE_MAX_AGE_SECONDS,
-    swr: false,
-    name: 'odpt-titles',
-    getKey: (_config: OdptConfig, type: TitledType, ids: string[]) => `${type}:${hash(ids)}`,
-  },
-)
+  })
+}
 
 /**
  * owl:sameAs → 日本語名。ODPT に存在しない（他事業者の直通先など）・名前が無い ID は結果に含めず、
- * 警告ログを残す（表示側は ID から組み立てた名前で縮退する。departures.ts の stationNameFromId 参照）。
+ * 警告ログを残す（表示側は ID から組み立てた名前で縮退する。departures.ts の nameFromOdptId 参照）。
  */
-export async function lookupTitles(event: H3Event, type: TitledType, ids: string[]): Promise<Map<string, string>> {
+export async function lookupTitles(odpt: OdptContext, type: TitledType, ids: string[]): Promise<Map<string, string>> {
   const unique = [...new Set(ids)].sort()
   if (unique.length === 0) return new Map()
-  const config = readOdptConfig(event)
 
-  const results = await Promise.all(batchSameAsIds(unique).map((batch) => cachedTitles(config, type, batch)))
+  const results = await Promise.all(batchSameAsIds(unique).map((batch) => fetchTitles(odpt, type, batch)))
 
   const titles = new Map(results.flat())
   const missing = unique.filter((id) => !titles.has(id))

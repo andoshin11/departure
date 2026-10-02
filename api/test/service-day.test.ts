@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calendarCandidates, departureMinutes, nextDate, toServiceMoment } from '#server/utils/service-day'
+import { calendarCandidates, departureMinutes, nextDate, toServiceMoment } from '../src/utils/service-day'
 
 /** JST の壁時計時刻から Date を作る */
 function jst(iso: string): Date {

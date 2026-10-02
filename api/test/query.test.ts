@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isStationId, parseCoordinate, parseRadius } from '#server/utils/query'
+import { isStationId, parseCoordinate, parseRadius } from '../src/utils/query'
 
 describe('parseCoordinate', () => {
   it('範囲内の数値文字列だけを受け付ける', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { parseTrainInformation, type OdptTrainInformation } from '#server/utils/odpt-parser'
-import { selectTrainInformation } from '#server/utils/departures'
+import { parseTrainInformation, type OdptTrainInformation } from '../src/utils/odpt-parser'
+import { selectTrainInformation } from '../src/utils/departures'
 
 // ODPT の実レスポンスの形（2026-10-03 に確認）を模したデータ
 const tokyoMetroDelayed = {
@@ -96,7 +96,9 @@ describe('selectTrainInformation', () => {
   })
 
   it('別の路線・事業者全体の情報は使わず、該当が無ければ unavailable', () => {
-    expect(selectTrainInformation([record({ railwayId: 'odpt.Railway:TokyoMetro.Hibiya' }), record({ railwayId: null })], railway, before)).toEqual({
+    expect(
+      selectTrainInformation([record({ railwayId: 'odpt.Railway:TokyoMetro.Hibiya' }), record({ railwayId: null })], railway, before),
+    ).toEqual({
       kind: 'unavailable',
     })
     expect(selectTrainInformation([], railway, before)).toEqual({ kind: 'unavailable' })

@@ -1,6 +1,6 @@
 import { MAX_DEPARTURES_PER_DIRECTION, type Departure, type DirectionDepartures, type TrainInformation } from '@departure/shared'
-import type { OdptStationTimetable, OdptTimetableEntry, OdptTrainInformation } from '#server/utils/odpt-parser'
-import { calendarCandidates, departureMinutes, nextDate, type ServiceMoment } from '#server/utils/service-day'
+import type { OdptStationTimetable, OdptTimetableEntry, OdptTrainInformation } from './odpt-parser'
+import { calendarCandidates, departureMinutes, nextDate, type ServiceMoment } from './service-day'
 
 /** 名前解決（owl:sameAs → 日本語名）の結果。ODPT に該当データが無い ID は含まれない */
 export type TitleMap = ReadonlyMap<string, string>
@@ -125,20 +125,18 @@ export function buildDirections(input: BuildDirectionsInput): DirectionDeparture
       .join('・')
   }
 
-  return [...byDirection.keys()]
-    .sort()
-    .map((directionId) => {
-      const directionName =
-        directionId === '' ? UNKNOWN_DIRECTION_NAME : (railDirectionTitles.get(directionId) ?? nameFromOdptId(directionId))
-      const departures: Departure[] = selectUpcoming(byDirection.get(directionId)!, moment).map(({ entry, nextServiceDay }) => ({
-        time: entry.departureTime,
-        destination: destinationName(entry.destinationStationIds),
-        trainType: entry.trainTypeId ? (trainTypeTitles.get(entry.trainTypeId) ?? null) : null,
-        nextServiceDay,
-        isLast: entry.isLast,
-      }))
-      return { directionName, departures }
-    })
+  return [...byDirection.keys()].sort().map((directionId) => {
+    const directionName =
+      directionId === '' ? UNKNOWN_DIRECTION_NAME : (railDirectionTitles.get(directionId) ?? nameFromOdptId(directionId))
+    const departures: Departure[] = selectUpcoming(byDirection.get(directionId)!, moment).map(({ entry, nextServiceDay }) => ({
+      time: entry.departureTime,
+      destination: destinationName(entry.destinationStationIds),
+      trainType: entry.trainTypeId ? (trainTypeTitles.get(entry.trainTypeId) ?? null) : null,
+      nextServiceDay,
+      isLast: entry.isLast,
+    }))
+    return { directionName, departures }
+  })
 }
 
 /**
@@ -152,9 +150,7 @@ export function selectTrainInformation(
   now: Date,
   onDiscard?: (reason: string) => void,
 ): TrainInformation {
-  const candidates = records
-    .filter((r) => r.railwayId === railwayId)
-    .sort((a, b) => Date.parse(b.date) - Date.parse(a.date))
+  const candidates = records.filter((r) => r.railwayId === railwayId).sort((a, b) => Date.parse(b.date) - Date.parse(a.date))
   const latest = candidates[0]
   if (!latest) return { kind: 'unavailable' }
   if (latest.validUntil === null) {
@@ -174,4 +170,3 @@ export function selectTrainInformation(
     validUntil: latest.validUntil,
   }
 }
-

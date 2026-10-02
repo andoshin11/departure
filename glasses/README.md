@@ -7,13 +7,13 @@ Even Realities G2 向けの「最寄り駅から次の電車」アプリ。`@eve
 ```bash
 cp .env.example .env
 # VITE_API_BASE_URL: api/ の URL（ローカルは http://localhost:3000）
-# VITE_API_KEY: api/ の NUXT_API_KEY と同じ値
+# VITE_API_KEY: api/ の API_KEY（Worker secret）と同じ値
 ```
 
 - `VITE_API_BASE_URL` / `VITE_API_KEY` は必須。本番ビルド（`yarn build`）は未設定なら失敗し、`yarn dev` は起動時にエラー画面を出す。
 - **本番 API の URL はリポジトリに書かない**。コミットしている `app.json` の network whitelist は開発用の `http://localhost:3000` だけで、`yarn package:ehpk`（`scripts/pack.ts`）が `.env.production` の `VITE_API_BASE_URL` の origin を差し込んだパッケージ用の `app.json`（`.pack/app.json`、`.gitignore` 済み）を作ってから `evenhub pack` する。パッケージ用の whitelist は本番の origin だけ（開発用の localhost は外れる）。
 - 本番ビルドでは `VITE_API_BASE_URL` が https であることも検証する（`vite-plugins/check-build-env.ts`）。
-- 環境ごとの値は `.env`（`yarn dev` / シミュレーター。ローカルの api を指す）と `.env.production`（`yarn build` / `yarn package:ehpk`。本番 URL と、Worker secret `NUXT_API_KEY` と同じ値）に置く（どちらも `.gitignore` 済み）。
+- 環境ごとの値は `.env`（`yarn dev` / シミュレーター。ローカルの api を指す）と `.env.production`（`yarn build` / `yarn package:ehpk`。本番 URL と、Worker secret `API_KEY` と同じ値）に置く（どちらも `.gitignore` 済み）。
 - `VITE_API_KEY` は `.ehpk` にそのまま埋め込まれる。個人利用前提の簡易的なアクセス制限であり、強固な秘匿ではない（ODPT のアクセストークンはアプリに含まれず、api/ 側だけが持つ）。
 
 ### 現在地
@@ -78,7 +78,7 @@ npx evenhub qr --url "http://<LAN IP>:5173"   # 実機（Even App でスキャ�
 
 ### Vite+ の導入方法（このモノレポでの注意点）
 
-- `vp migrate` はワークスペースのルートでしか実行できず、`api/`（Nuxt）まで移行対象になるため、glasses だけ手動で導入している。
+- `vp migrate` はワークスペースのルートでしか実行できないため、glasses・api それぞれに手動で導入している。
   - `glasses/package.json` の devDependencies で `vite` を `npm:@voidzero-dev/vite-plus-core` に、`vitest` を `vite-plus` 同梱のバージョンに固定している。ドキュメントの手順（ルートの `resolutions`）に従うと、`api/` が使う `vite` / `vitest` まで差し替わってしまうため。
   - さらに `installConfig.hoistingLimits: "workspaces"` で glasses の依存をルートに巻き上げないようにしている。これが無いと Yarn の node-modules linker がエイリアスをルートの `node_modules/vite` に置き、`api/` からも vite-plus-core が見えてしまう。
   - `yarn install` で出る `vite is listed by your project with version 1.0.0 ... doesn't satisfy ...`（YN0060）は、エイリアス先のバージョン番号（1.0.0）が peer dependency の範囲判定に使われるための警告で、動作には影響しない。

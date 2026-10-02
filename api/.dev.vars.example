@@ -1,4 +1,5 @@
+# `cp .dev.vars.example .dev.vars` して値を入れる（wrangler dev が読む。.dev.vars は .gitignore 済み）
 # glasses/ の VITE_API_KEY と同じ値にする
-NUXT_API_KEY=
+API_KEY=
 # https://developer.odpt.org/ で取得した ODPT のアクセストークン（acl:consumerKey）
-NUXT_ODPT_CONSUMER_KEY=
+ODPT_CONSUMER_KEY=

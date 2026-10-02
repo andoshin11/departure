@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { timingSafeEqualString } from '../server/utils/timing-safe-equal'
+import { timingSafeEqualString } from '../src/utils/timing-safe-equal'
 
 describe('timingSafeEqualString', () => {
   it('同じ文字列同士は true', () => {

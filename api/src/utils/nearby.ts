@@ -1,6 +1,6 @@
 import type { NearbyStation, StationRailway } from '@departure/shared'
-import type { OdptStation } from '#server/utils/odpt-parser'
-import { nameFromOdptId, type TitleMap } from '#server/utils/departures'
+import type { OdptStation } from './odpt-parser'
+import { nameFromOdptId, type TitleMap } from './departures'
 
 const EARTH_RADIUS_METERS = 6_371_000
 

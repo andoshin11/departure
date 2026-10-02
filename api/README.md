@@ -1,6 +1,6 @@
 # @departure/api
 
-公共交通オープンデータ（ODPT）API v4 を中継する API。Nuxt 4 の server routes のみで構成され、Cloudflare Workers（`workers.dev`）にデプロイする。
+公共交通オープンデータ（ODPT）API v4 を中継する API。[Hono](https://hono.dev/) で書いた Cloudflare Workers（`workers.dev`）で、ビルド・ローカル実行・デプロイは wrangler、テスト・lint・型チェック・整形は Vite+（`vp`）で行う。
 
 ODPT のアクセストークン（`acl:consumerKey`）をアプリ（`.ehpk`）に埋め込まないこと、ODPT の JSON-LD を G2 で表示しやすい形に整形すること、時刻表・名称をキャッシュすることが目的。
 
@@ -22,14 +22,14 @@ ODPT のアクセストークン（`acl:consumerKey`）をアプリ（`.ehpk`）
 ## 発車予定の計算
 
 - 現在時刻はサーバーの時計を JST に換算して使う。
-- **運行日の境界は JST 03:00**。03:00 より前の時刻（例: `00:30` 発の終電）は前日の運行日のダイヤとして扱う（`server/utils/service-day.ts`）。
+- **運行日の境界は JST 03:00**。03:00 より前の時刻（例: `00:30` 発の終電）は前日の運行日のダイヤとして扱う（`src/utils/service-day.ts`）。
 - **カレンダー（`odpt:calendar`）の選択**: 事業者によって「平日 / 土曜 / 休日」と分けるものと「平日 / 土休日」と分けるものがあるため、運行日ごとに候補を限定的な順に並べ、方面ごとに最初に見つかった時刻表を使う。
-  | 運行日 | 候補（先頭優先） |
-  | --- | --- |
-  | 平日 | `<曜日>`（例: `Monday`）→ `Weekday` |
-  | 土曜 | `Saturday` → `SaturdayHoliday` |
-  | 日曜 | `Sunday` → `Holiday` → `SaturdayHoliday` |
-  | 祝日・年末年始（12/30〜1/3） | `Holiday` → `SaturdayHoliday` |
+  | 運行日                       | 候補（先頭優先）                         |
+  | ---------------------------- | ---------------------------------------- |
+  | 平日                         | `<曜日>`（例: `Monday`）→ `Weekday`      |
+  | 土曜                         | `Saturday` → `SaturdayHoliday`           |
+  | 日曜                         | `Sunday` → `Holiday` → `SaturdayHoliday` |
+  | 祝日・年末年始（12/30〜1/3） | `Holiday` → `SaturdayHoliday`            |
   - 祝日判定は `@holiday-jp/holiday_jp`。年末年始を休日扱いにするのは首都圏の主要事業者の運用に合わせたもので、事業者ごとの例外には対応しない。
   - `odpt.Calendar:Specific.*`（臨時ダイヤ等）には対応しない。該当する時刻表が無い方面は `departures: []` で返し、アプリは「該当するダイヤがありません」と表示する。
 - 当日の残りが3本に満たない場合（終電間際・終電後）は、翌運行日のダイヤの始発から補い `nextServiceDay: true` を付ける。
@@ -38,44 +38,52 @@ ODPT のアクセストークン（`acl:consumerKey`）をアプリ（`.ehpk`）
 
 ## キャッシュ
 
-`defineCachedFunction`（本番は Cloudflare KV、開発は in-memory）。レスポンス自体は現在地・現在時刻に依存するためキャッシュしない。
+`src/utils/kv-cache.ts` の `cached()` で Cloudflare KV（binding `CACHE`）に保存する。`wrangler dev` ではローカルの KV（`.wrangler/state`）を使う。レスポンス自体は現在地・現在時刻に依存するためキャッシュしない。
 
-| 対象 | 期間 |
-| --- | --- |
-| 駅時刻表（駅ごと） | 6時間 |
-| 運行情報（路線ごと） | 60秒（ODPT の有効期限が約5分のため、それより十分短く） |
-| 名称（型 + ID 集合ごと。キーは ID 集合のハッシュ） | 24時間 |
+- 期限は保存した値の中に持ち、読み出し時に確認する（KV のエッジキャッシュにより、期限切れ直後の値がしばらく返ることがあるため）。
+- 書き込みの失敗（同じキーへの同時書き込みによる 429 等）はログに残し、キャッシュせずに結果を返す。
+
+| 対象                                               | 期間                                                   |
+| -------------------------------------------------- | ------------------------------------------------------ |
+| 駅時刻表（駅ごと）                                 | 6時間                                                  |
+| 運行情報（路線ごと）                               | 60秒（ODPT の有効期限が約5分のため、それより十分短く） |
+| 名称（型 + ID 集合ごと。キーは ID 集合のハッシュ） | 24時間                                                 |
 
 ## 設定
 
-`nuxt.config.ts` の `runtimeConfig`（環境変数 `NUXT_*` からマッピング）。
+Worker の環境（`src/env.ts` の `Bindings`）。
 
-| 環境変数 | 必須 | 内容 |
-| --- | --- | --- |
-| `NUXT_API_KEY` | ✔ | glasses の `VITE_API_KEY` と同じ値。未設定なら全リクエスト 500 |
-| `NUXT_ODPT_CONSUMER_KEY` | ✔ | [ODPT 開発者サイト](https://developer.odpt.org/) で発行したアクセストークン。未設定なら 500 |
-| `NUXT_ODPT_BASE_URL` | | 既定 `https://api.odpt.org/api/v4`。チャレンジ用 API 等を使う場合に指定 |
+| 名前                | 種類   | 内容                                                                                                 |
+| ------------------- | ------ | ---------------------------------------------------------------------------------------------------- |
+| `API_KEY`           | secret | glasses の `VITE_API_KEY` と同じ値。未設定なら全リクエスト 500                                       |
+| `ODPT_CONSUMER_KEY` | secret | [ODPT 開発者サイト](https://developer.odpt.org/) で発行したアクセストークン。未設定なら 500          |
+| `ODPT_BASE_URL`     | var    | `wrangler.jsonc` の `vars`（`https://api.odpt.org/api/v4`）。チャレンジ用 API 等を使う場合に変更する |
+| `CACHE`             | KV     | キャッシュ用の KV namespace（`wrangler.jsonc` の `kv_namespaces`）                                   |
 
-- ローカル (`yarn dev`): `api/.env`（`.env.example` 参照）
-- ローカル (`yarn preview` = `wrangler dev`): `api/.dev.vars`（wrangler は `.env` を読まない）
-- 本番: `wrangler secret put NUXT_API_KEY` / `wrangler secret put NUXT_ODPT_CONSUMER_KEY`
+- ローカル（`yarn dev` = `wrangler dev`）: `api/.dev.vars`（`.dev.vars.example` 参照。`.gitignore` 済み）
+- 本番: `wrangler secret put API_KEY` / `wrangler secret put ODPT_CONSUMER_KEY`
 
 ## 開発
 
 ```bash
-yarn workspace @departure/api dev        # http://localhost:3000
-yarn workspace @departure/api test
-yarn workspace @departure/api typecheck
-yarn workspace @departure/api lint
+yarn workspace @departure/api dev     # wrangler dev（http://localhost:3000）
+yarn workspace @departure/api test    # vp test（Vitest）
+yarn workspace @departure/api check   # vp check（Oxfmt の整形確認 + Oxlint + 型チェック）
+yarn workspace @departure/api fmt     # vp fmt（整形）
+yarn workspace @departure/api build   # wrangler deploy --dry-run（バンドルできることの確認。dist/ に出力）
 ```
+
+- エントリーポイントは `src/index.ts`（CORS → API Key 認証 → ルート、エラーは `{ statusCode, message }` の JSON）。ルートは `src/routes/`、ODPT へのアクセスとデータ処理は `src/utils/`。
+- テストは `app.request()` で HTTP のまま確かめる（`test/app.test.ts`。ODPT への `fetch` と KV はスタブ）。
+- Vite+ は glasses と同じく手動で導入している（`vite` を `@voidzero-dev/vite-plus-core` に置き換え、`installConfig.hoistingLimits: "workspaces"` で他のワークスペースに影響させない）。
 
 ## デプロイ
 
-`main` への `api/**` / `shared/**` の push で `.github/workflows/deploy-api.yml` が typecheck → lint → test → build → `wrangler deploy` を行う。
+`main` への `api/**` / `shared/**` の push で `.github/workflows/deploy-api.yml` が check（整形・lint・型チェック）→ test → `wrangler deploy` を行う。
 
 ### 初回のみ必要な作業
 
 1. **KV namespace**（2026-10-02 実施済み）: `wrangler kv namespace create departure-cache` で作成し、id を `wrangler.jsonc` に記入済み。作り直した場合は id を更新すること（プレースホルダー `REPLACE_WITH_KV_NAMESPACE_ID` が残っているとデプロイ workflow が失敗する）。
 2. **Cloudflare API Token**（2026-10-02 実施済み）: アカウント API トークン `departure-deploy`（権限: Workers Scripts: Edit のみ、有効期限 2027-10-03）を発行し、GitHub Secrets の `CLOUDFLARE_API_TOKEN` に登録済み。期限前に同じ手順で再発行し、secret を更新すること。トークンがアカウントを列挙できないため、デプロイ時にアカウント ID を渡す必要がある。アカウント ID はリポジトリに書かず、GitHub Secrets の `CLOUDFLARE_ACCOUNT_ID` に登録している（2026-10-02 実施済み。`deploy-api.yml` が未設定を検知して失敗させる）。手元で wrangler を使う場合は `wrangler login` すればアカウントは自動で決まる（複数アカウントがある場合は環境変数 `CLOUDFLARE_ACCOUNT_ID` で指定する）。
-3. `NUXT_API_KEY` / `NUXT_ODPT_CONSUMER_KEY` を Worker secret に設定する。
+3. `API_KEY` / `ODPT_CONSUMER_KEY` を Worker secret に設定する（2026-10-03 に Nuxt 時代の `NUXT_API_KEY` / `NUXT_ODPT_CONSUMER_KEY` から移行）。
 4. デプロイ後の Workers の URL を `glasses/.env.production` の `VITE_API_BASE_URL` に設定する（リポジトリには書かない。`glasses/README.md` 参照）。
