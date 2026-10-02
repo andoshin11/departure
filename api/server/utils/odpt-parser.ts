@@ -160,3 +160,41 @@ export function batchSameAsIds(ids: string[], size: number = SAME_AS_MAX_VALUES)
   for (let i = 0; i < ids.length; i += size) batches.push(ids.slice(i, i + size))
   return batches
 }
+
+export interface OdptTrainInformation {
+  /** 運行情報の対象路線。事業者全体の情報では null */
+  railwayId: string | null
+  text: string
+  status: string | null
+  cause: string | null
+  /** dc:date */
+  date: string
+  /** dct:valid。無い場合は null */
+  validUntil: string | null
+}
+
+function requireIsoDate(obj: Json, key: string, label: string): string {
+  const v = requireString(obj, key, label)
+  if (Number.isNaN(Date.parse(v))) throw new Error(`${label}.${key} is not a date: ${v}`)
+  return v
+}
+
+export function parseTrainInformation(data: unknown): OdptTrainInformation[] {
+  return asArray(data, 'odpt:TrainInformation response').map((value, i) => {
+    const label = `odpt:TrainInformation[${i}]`
+    const obj = asRecord(value, label)
+    const text = jaTitle(obj, 'odpt:trainInformationText')
+    if (text === null) throw new Error(`${label}.odpt:trainInformationText.ja is missing`)
+    const valid = optionalString(obj, 'dct:valid')
+    if (valid !== null && Number.isNaN(Date.parse(valid))) throw new Error(`${label}.dct:valid is not a date: ${valid}`)
+    return {
+      railwayId: optionalString(obj, 'odpt:railway'),
+      text,
+      status: jaTitle(obj, 'odpt:trainInformationStatus'),
+      cause: jaTitle(obj, 'odpt:trainInformationCause'),
+      date: requireIsoDate(obj, 'dc:date', label),
+      validUntil: valid,
+    }
+  })
+}
+

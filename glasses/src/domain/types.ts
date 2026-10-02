@@ -49,6 +49,12 @@ export interface DeparturesState {
    */
   railwayCursor: number | null
   load: Load<DeparturesResponse>
+  /**
+   * 表示中の発車予定を裏で取り直している最中なら true（load.status === 'ready' のときだけ使う）。
+   * 運行情報の有効期限が来たときの自動更新で使う。取り直しの間も発車予定は表示したまま、
+   * 有効期限の切れた運行情報だけを「更新中」に差し替える（開発者ガイドライン 2.1.2）。
+   */
+  refreshing: boolean
 }
 
 export type AppState = StationsState | RailwaysState | DeparturesState
@@ -70,12 +76,16 @@ export type AppEvent =
   | { type: 'NEARBY_LOAD_FAILED'; message: string }
   | { type: 'DEPARTURES_LOADED'; stationId: string; data: DeparturesResponse }
   | { type: 'DEPARTURES_LOAD_FAILED'; stationId: string; message: string }
+  /** 運行情報の有効期限（validUntil）が来た。SCHEDULE_INFO_EXPIRY で予約したタイマーから届く */
+  | { type: 'INFO_EXPIRED'; stationId: string; validUntil: string }
 
 /** reducer が要求する副作用。実行は main.ts 側の effect runner が担う */
 export type Effect =
   | { type: 'LOCATE' }
   | { type: 'FETCH_NEARBY'; lat: number; lon: number }
   | { type: 'FETCH_DEPARTURES'; stationId: string }
+  /** 運行情報の有効期限（validUntil）に INFO_EXPIRED を届けるタイマーを予約する（予約済みのものは置き換える） */
+  | { type: 'SCHEDULE_INFO_EXPIRY'; stationId: string; validUntil: string }
   | { type: 'EXIT' }
 
 export interface ReduceResult {

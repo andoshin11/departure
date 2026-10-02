@@ -53,6 +53,7 @@ describe('buildTextContainers: MAX_TEXT_BYTES の fail-fast ガード', () => {
       railway: station.railways[0]!,
       railwayCursor: null,
       load: { status: 'ready', data },
+      refreshing: false,
     }
     const plan = planScreen(state)
     expect(utf8ByteLength(plan.body)).toBeLessThanOrEqual(MAX_TEXT_BYTES)

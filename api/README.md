@@ -13,6 +13,9 @@ ODPT のアクセストークン（`acl:consumerKey`）をアプリ（`.ehpk`）
 - `GET /api/stations/nearby?lat=<緯度>&lon=<経度>&radius=<m>` — 半径（1〜4000m の整数）以内の駅を**駅名でまとめて**近い順に返す（`NearbyStationsResponse`）。不正なパラメータは 400。
   - ODPT の `places/odpt:Station` を使う。ODPT の駅（`odpt:Station`）は路線ごとに別オブジェクトなので、同じ駅名（`odpt:stationTitle.ja`）のものを1駅にまとめ、路線の一覧として返す。
 - `GET /api/departures?station=<odpt:Station の owl:sameAs>` — その駅（路線）から次に発車する列車を**方面（`odpt:railDirection`）ごとに最大3本**返す（`DeparturesResponse`）。
+  - あわせて、その路線の**運行情報**（`odpt:TrainInformation`）を `trainInformation` で返す。発車予定は時刻表どおりの予定なので、遅延等はここで伝える。
+    - 有効期限（`dct:valid`）を過ぎた情報・有効期限の無い情報は返さず `{ kind: 'unavailable' }` にする（開発者ガイドライン 2.1.2）。理由はログに出す。
+    - 運行情報は補助的な情報なので、取得に失敗しても発車予定は返し、`{ kind: 'error' }` にして画面で明示する（失敗はログに出す）。
   - `station` が `odpt.Station:` 形式でなければ 400。駅が存在しない、または ODPT にその駅の時刻表（`odpt:StationTimetable`）が無い場合は 404（「今日はもう電車が無い」と区別するため）。
 - ODPT 側の失敗（ネットワークエラー・非2xx・想定外の形式）は 502。原因はログに出す（アクセストークンは伏せる）。自動リトライはしない。
 
@@ -40,6 +43,7 @@ ODPT のアクセストークン（`acl:consumerKey`）をアプリ（`.ehpk`）
 | 対象 | 期間 |
 | --- | --- |
 | 駅時刻表（駅ごと） | 6時間 |
+| 運行情報（路線ごと） | 60秒（ODPT の有効期限が約5分のため、それより十分短く） |
 | 名称（型 + ID 集合ごと。キーは ID 集合のハッシュ） | 24時間 |
 
 ## 設定

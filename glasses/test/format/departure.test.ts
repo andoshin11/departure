@@ -1,9 +1,17 @@
 import { describe, expect, it } from 'vite-plus/test'
 import { getTextWidth } from '@evenrealities/pretext'
-import { departureLine, departureRows, formatDistance, formatJstTime, railwayLabel, stationLabel } from '../../src/format/departure'
+import {
+  departureLine,
+  departureRows,
+  formatDistance,
+  formatJstTime,
+  railwayLabel,
+  stationLabel,
+  trainInformationLine,
+} from '../../src/format/departure'
 import { MAX_TEXT_BYTES, TEXT_INNER_WIDTH } from '../../src/constants'
 import { utf8ByteLength } from '../../src/format/textByteLimit'
-import { makeDeparture, makeRailway, makeStation } from '../fixtures/data'
+import { makeDeparture, makeRailway, makeStation, makeTrainInformation } from '../fixtures/data'
 
 describe('formatDistance', () => {
   it('1000m 未満は m、以上は 0.1km 単位', () => {
@@ -72,5 +80,29 @@ describe('departureRows', () => {
     const limited = departureRows([dir('A方面'), dir('B方面'), dir('C方面')], TEXT_INNER_WIDTH, oneLine + 60)
     expect(limited).toEqual([...all.slice(0, 3), '（他2方面は表示しきれません）'])
     expect(utf8ByteLength(limited.join('\n'))).toBeLessThanOrEqual(oneLine + 60)
+  })
+})
+
+describe('trainInformationLine', () => {
+  it('状態が無ければ文章をそのまま、生成時刻（JST）を添える', () => {
+    expect(trainInformationLine(makeTrainInformation(), false, TEXT_INNER_WIDTH)).toBe('運行情報 11:59 現在、平常どおり運転しています。')
+  })
+
+  it('状態があれば「状態（原因）」を出す（東京メトロの遅延時）', () => {
+    const info = makeTrainInformation({ text: '21時54分頃、表参道駅で荷物挟まりのため…', status: 'ダイヤ乱れ', cause: '荷物挟まり' })
+    expect(trainInformationLine(info, false, TEXT_INNER_WIDTH)).toBe('運行情報 11:59 ダイヤ乱れ（荷物挟まり）')
+    expect(trainInformationLine(makeTrainInformation({ status: '遅延' }), false, TEXT_INNER_WIDTH)).toBe('運行情報 11:59 遅延')
+  })
+
+  it('情報が無い・取得失敗・更新中をそれぞれ明示する', () => {
+    expect(trainInformationLine({ kind: 'unavailable' }, false, TEXT_INNER_WIDTH)).toBe('運行情報はありません')
+    expect(trainInformationLine({ kind: 'error' }, false, TEXT_INNER_WIDTH)).toBe('運行情報を取得できませんでした')
+    expect(trainInformationLine(makeTrainInformation(), true, TEXT_INNER_WIDTH)).toBe('運行情報を更新中…')
+  })
+
+  it('長い文章は1行に収まるよう切り詰める', () => {
+    const line = trainInformationLine(makeTrainInformation({ text: '振替輸送を実施しています。'.repeat(10) }), false, TEXT_INNER_WIDTH)
+    expect(getTextWidth(line)).toBeLessThanOrEqual(TEXT_INNER_WIDTH)
+    expect(line.startsWith('運行情報 11:59 振替輸送')).toBe(true)
   })
 })

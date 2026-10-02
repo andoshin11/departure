@@ -7,8 +7,10 @@ import {
   extractTitle,
   parseStations,
   parseStationTimetables,
+  parseTrainInformation,
   type OdptStation,
   type OdptStationTimetable,
+  type OdptTrainInformation,
   type TitledType,
 } from '#server/utils/odpt-parser'
 
@@ -19,6 +21,11 @@ import {
 
 /** 名前解決（Railway/Operator/RailDirection/TrainType/Station の日本語名）のキャッシュ期間。マスタ系なので長め */
 const TITLE_CACHE_MAX_AGE_SECONDS = 60 * 60 * 24
+/**
+ * 運行情報のキャッシュ期間。ODPT の運行情報は有効期限（dct:valid）が約5分なので、
+ * それより十分短くして、有効期限内の新しい情報を返せるようにする。
+ */
+const TRAIN_INFORMATION_CACHE_MAX_AGE_SECONDS = 60
 /** 駅時刻表のキャッシュ期間。ダイヤ改正は事前告知されるので数時間の遅れは許容する */
 const TIMETABLE_CACHE_MAX_AGE_SECONDS = 60 * 60 * 6
 
@@ -101,6 +108,25 @@ const cachedStationTimetables = defineCachedFunction(
     getKey: (_config: OdptConfig, stationId: string) => stationId,
   },
 )
+
+const cachedTrainInformation = defineCachedFunction(
+  async (config: OdptConfig, railwayId: string): Promise<OdptTrainInformation[]> => {
+    const path = 'odpt:TrainInformation'
+    const data = await odptGet(config, path, { 'odpt:railway': railwayId })
+    return parseOr502(path, () => parseTrainInformation(data))
+  },
+  {
+    maxAge: TRAIN_INFORMATION_CACHE_MAX_AGE_SECONDS,
+    swr: false,
+    name: 'odpt-train-information',
+    getKey: (_config: OdptConfig, railwayId: string) => railwayId,
+  },
+)
+
+/** 路線の運行情報（odpt:TrainInformation）。失敗時は他の ODPT 呼び出しと同じく 502 の H3Error を投げる */
+export function fetchTrainInformation(event: H3Event, railwayId: string): Promise<OdptTrainInformation[]> {
+  return cachedTrainInformation(readOdptConfig(event), railwayId)
+}
 
 export function fetchStationTimetables(event: H3Event, stationId: string): Promise<OdptStationTimetable[]> {
   return cachedStationTimetables(readOdptConfig(event), stationId)

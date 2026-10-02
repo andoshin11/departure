@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test'
 import { createInitialState, initialEffects, reduce } from '../../src/domain/reducer'
 import type { AppState, DeparturesState, RailwaysState, StationsState } from '../../src/domain/types'
-import { makeDepartures, makeStation } from '../fixtures/data'
+import { makeDepartures, makeStation, makeTrainInformation } from '../fixtures/data'
 
 const shibuya = makeStation('渋谷', 3, 120)
 const ebisu = makeStation('恵比寿', 1, 800)
@@ -19,6 +19,7 @@ function departuresState(overrides: Partial<DeparturesState> = {}): DeparturesSt
     railway: shibuya.railways[1]!,
     railwayCursor: 1,
     load: { status: 'loading' },
+    refreshing: false,
     ...overrides,
   }
 }
@@ -189,5 +190,65 @@ describe('departures 画面', () => {
   it('SCROLL は何もしない（はみ出した内容はファームウェアのネイティブスクロールに任せる）', () => {
     const s = departuresState({ load: { status: 'ready', data: makeDepartures(stationId) } })
     expect(reduce(s, { type: 'SCROLL_NEXT' }).state).toBe(s)
+  })
+})
+
+describe('departures 画面: 運行情報の有効期限と自動更新', () => {
+  const stationId = shibuya.railways[1]!.stationId
+  const validUntil = '2026-09-28T03:04:00.000Z'
+  const ready = (overrides: Partial<DeparturesState> = {}) =>
+    departuresState({ load: { status: 'ready', data: makeDepartures(stationId) }, ...overrides })
+
+  it('読み込み完了時、運行情報があればその有効期限で自動更新を予約する', () => {
+    const r = reduce(departuresState(), { type: 'DEPARTURES_LOADED', stationId, data: makeDepartures(stationId) })
+    expect(r.effects).toEqual([{ type: 'SCHEDULE_INFO_EXPIRY', stationId, validUntil }])
+  })
+
+  it('運行情報が無い・取得失敗のときは予約しない', () => {
+    for (const trainInformation of [{ kind: 'unavailable' } as const, { kind: 'error' } as const]) {
+      const r = reduce(departuresState(), { type: 'DEPARTURES_LOADED', stationId, data: makeDepartures(stationId, { trainInformation }) })
+      expect(r.effects).toEqual([])
+    }
+  })
+
+  it('有効期限が来たら、発車予定を表示したまま裏で取り直す', () => {
+    const r = reduce(ready(), { type: 'INFO_EXPIRED', stationId, validUntil })
+    expect(r.state).toMatchObject({ load: { status: 'ready' }, refreshing: true })
+    expect(r.effects).toEqual([{ type: 'FETCH_DEPARTURES', stationId }])
+  })
+
+  it('取り直しの結果で差し替え、次の有効期限を予約する', () => {
+    const next = makeDepartures(stationId, { trainInformation: makeTrainInformation({ validUntil: '2026-09-28T03:09:00.000Z' }) })
+    const r = reduce(ready({ refreshing: true }), { type: 'DEPARTURES_LOADED', stationId, data: next })
+    expect(r.state).toMatchObject({ load: { status: 'ready', data: next }, refreshing: false })
+    expect(r.effects).toEqual([{ type: 'SCHEDULE_INFO_EXPIRY', stationId, validUntil: '2026-09-28T03:09:00.000Z' }])
+  })
+
+  it('取り直しに失敗したら、発車予定は残し、期限切れの運行情報は「取得できない」に替える', () => {
+    const r = reduce(ready({ refreshing: true }), { type: 'DEPARTURES_LOAD_FAILED', stationId, message: 'NG' })
+    expect(r.state).toMatchObject({ load: { status: 'ready' }, refreshing: false })
+    const s = r.state as DeparturesState
+    expect(s.load.status === 'ready' && s.load.data.trainInformation).toEqual({ kind: 'error' })
+    expect(s.load.status === 'ready' && s.load.data.directions).toEqual(makeDepartures(stationId).directions)
+  })
+
+  it('古いタイマー（期限が違う・別の駅・読み込み中・更新中）は無視する', () => {
+    const s = ready()
+    expect(reduce(s, { type: 'INFO_EXPIRED', stationId, validUntil: '2026-09-28T02:00:00.000Z' }).state).toBe(s)
+    expect(reduce(s, { type: 'INFO_EXPIRED', stationId: 'other', validUntil }).state).toBe(s)
+    const loading = departuresState()
+    expect(reduce(loading, { type: 'INFO_EXPIRED', stationId, validUntil }).state).toBe(loading)
+    const refreshing = ready({ refreshing: true })
+    expect(reduce(refreshing, { type: 'INFO_EXPIRED', stationId, validUntil }).state).toBe(refreshing)
+  })
+
+  it('別の画面にいるときに届いたタイマーは無視する', () => {
+    const railways: RailwaysState = { screen: 'railways', origin: { data: { stations }, cursor: 0 }, station: shibuya, cursor: 0 }
+    expect(reduce(railways, { type: 'INFO_EXPIRED', stationId, validUntil }).state).toBe(railways)
+  })
+
+  it('自動更新中の CLICK は無視する（二重に取得しない）', () => {
+    const s = ready({ refreshing: true })
+    expect(reduce(s, { type: 'CLICK' })).toEqual({ state: s, effects: [] })
   })
 })

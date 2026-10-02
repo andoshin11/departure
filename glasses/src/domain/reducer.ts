@@ -1,5 +1,5 @@
 import type { AppEvent, AppState, DeparturesState, Effect, ReduceResult, RailwaysState, StationsOrigin, StationsState } from './types'
-import type { NearbyStation } from '@departure/shared'
+import type { DeparturesResponse, NearbyStation } from '@departure/shared'
 
 /** 起動直後の状態。main.ts は初回描画のあと initialEffects を実行する */
 export function createInitialState(): StationsState {
@@ -39,7 +39,7 @@ function openDepartures(origin: StationsOrigin, station: NearbyStation, railwayC
   const railway = station.railways[railwayCursor ?? 0]
   if (!railway) throw new Error(`openDepartures: ${station.name} に路線 index=${railwayCursor} がありません`)
   return {
-    state: { screen: 'departures', origin, station, railway, railwayCursor, load: { status: 'loading' } },
+    state: { screen: 'departures', origin, station, railway, railwayCursor, load: { status: 'loading' }, refreshing: false },
     effects: [{ type: 'FETCH_DEPARTURES', stationId: railway.stationId }],
   }
 }
@@ -136,25 +136,51 @@ function reduceRailways(state: RailwaysState, event: AppEvent): ReduceResult {
   }
 }
 
+/** 運行情報が有効期限付きで取れていれば、その期限に自動更新するタイマーの予約を返す */
+function scheduleInfoExpiry(stationId: string, data: DeparturesResponse): Effect[] {
+  const info = data.trainInformation
+  return info.kind === 'available' ? [{ type: 'SCHEDULE_INFO_EXPIRY', stationId, validUntil: info.validUntil }] : noEffects
+}
+
 function reduceDepartures(state: DeparturesState, event: AppEvent): ReduceResult {
+  const stationId = state.railway.stationId
   const refetch = (): ReduceResult => ({
-    state: { ...state, load: { status: 'loading' } },
-    effects: [{ type: 'FETCH_DEPARTURES', stationId: state.railway.stationId }],
+    state: { ...state, load: { status: 'loading' }, refreshing: false },
+    effects: [{ type: 'FETCH_DEPARTURES', stationId }],
   })
+  const isWaitingForResponse = state.load.status === 'loading' || state.refreshing
 
   switch (event.type) {
     case 'DEPARTURES_LOADED':
-      if (event.stationId !== state.railway.stationId || state.load.status !== 'loading') return { state, effects: noEffects }
-      return { state: { ...state, load: { status: 'ready', data: event.data } }, effects: noEffects }
+      if (event.stationId !== stationId || !isWaitingForResponse) return { state, effects: noEffects }
+      return {
+        state: { ...state, load: { status: 'ready', data: event.data }, refreshing: false },
+        effects: scheduleInfoExpiry(stationId, event.data),
+      }
 
     case 'DEPARTURES_LOAD_FAILED':
-      if (event.stationId !== state.railway.stationId || state.load.status !== 'loading') return { state, effects: noEffects }
-      return { state: { ...state, load: { status: 'error', message: event.message } }, effects: noEffects }
+      if (event.stationId !== stationId || !isWaitingForResponse) return { state, effects: noEffects }
+      if (state.refreshing && state.load.status === 'ready') {
+        // 自動更新の失敗: 発車予定は表示したまま、有効期限の切れた運行情報だけを「取得できない」に替える
+        // （期限切れの情報を表示し続けない。開発者ガイドライン 2.1.2）。
+        const data: DeparturesResponse = { ...state.load.data, trainInformation: { kind: 'error' } }
+        return { state: { ...state, load: { status: 'ready', data }, refreshing: false }, effects: noEffects }
+      }
+      return { state: { ...state, load: { status: 'error', message: event.message }, refreshing: false }, effects: noEffects }
 
-    // CLICK: 表示中なら最新の発車予定に更新、エラーなら再試行。読み込み中は無視する。
+    // 運行情報の有効期限が来た: 発車予定を表示したまま裏で取り直す。表示中のものと別の期限（予約後に
+    // 取り直した等）や、別の駅・読み込み中に届いたものは古いタイマーなので無視する。
+    case 'INFO_EXPIRED': {
+      if (event.stationId !== stationId || state.load.status !== 'ready' || state.refreshing) return { state, effects: noEffects }
+      const info = state.load.data.trainInformation
+      if (info.kind !== 'available' || info.validUntil !== event.validUntil) return { state, effects: noEffects }
+      return { state: { ...state, refreshing: true }, effects: [{ type: 'FETCH_DEPARTURES', stationId }] }
+    }
+
+    // CLICK: 表示中なら最新の発車予定に更新、エラーなら再試行。読み込み中・自動更新中は無視する。
     case 'CLICK':
     case 'FOREGROUND_ENTER':
-      if (state.load.status === 'loading') return { state, effects: noEffects }
+      if (isWaitingForResponse) return { state, effects: noEffects }
       return refetch()
 
     case 'DOUBLE_CLICK':

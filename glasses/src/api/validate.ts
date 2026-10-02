@@ -5,6 +5,7 @@ import type {
   NearbyStation,
   NearbyStationsResponse,
   StationRailway,
+  TrainInformation,
 } from '@departure/shared'
 import { ApiError } from './errors'
 
@@ -90,6 +91,39 @@ function validateDirection(value: unknown, label: string): DirectionDepartures {
   }
 }
 
+function nullableStr(obj: Json, key: string, label: string): string | null {
+  const v = obj[key]
+  if (v !== null && typeof v !== 'string') invalid(`${label}.${key}`)
+  return v
+}
+
+function isoDate(obj: Json, key: string, label: string): string {
+  const v = str(obj, key, label)
+  if (Number.isNaN(Date.parse(v))) invalid(`${label}.${key}`)
+  return v
+}
+
+function validateTrainInformation(value: unknown): TrainInformation {
+  const label = 'trainInformation'
+  const t = asRecord(value, label)
+  switch (t.kind) {
+    case 'available':
+      return {
+        kind: 'available',
+        text: str(t, 'text', label),
+        status: nullableStr(t, 'status', label),
+        cause: nullableStr(t, 'cause', label),
+        date: isoDate(t, 'date', label),
+        validUntil: isoDate(t, 'validUntil', label),
+      }
+    case 'unavailable':
+    case 'error':
+      return { kind: t.kind }
+    default:
+      invalid(`${label}.kind`)
+  }
+}
+
 export function validateDeparturesResponse(data: unknown): DeparturesResponse {
   const d = asRecord(data, 'response')
   return {
@@ -98,5 +132,6 @@ export function validateDeparturesResponse(data: unknown): DeparturesResponse {
     railwayName: str(d, 'railwayName', 'response'),
     generatedAt: str(d, 'generatedAt', 'response'),
     directions: asArray(d.directions, 'directions').map((x, i) => validateDirection(x, `directions[${i}]`)),
+    trainInformation: validateTrainInformation(d.trainInformation),
   }
 }

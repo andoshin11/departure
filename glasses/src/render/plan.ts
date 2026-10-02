@@ -2,8 +2,9 @@ import { measureTextWrap, pxTruncate } from '@evenrealities/pretext'
 import type { AppState } from '../domain/types'
 import { paginateCursorList } from '../domain/listPaging'
 import { formatCursorRow } from '../format/label'
-import { departureRows, formatJstTime, railwayLabel, stationLabel } from '../format/departure'
+import { departureRows, formatJstTime, railwayLabel, stationLabel, trainInformationLine } from '../format/departure'
 import { LIST_ROWS_PER_PAGE, MAX_TEXT_BYTES, NEARBY_RADIUS_METERS, TEXT_INNER_WIDTH } from '../constants'
+import { utf8ByteLength } from '../format/textByteLimit'
 
 export type ScreenPlan = { kind: 'text'; body: string; footer?: string }
 
@@ -79,7 +80,10 @@ export function planScreen(state: AppState): ScreenPlan {
       if (load.status === 'loading') return { kind: 'text', body: LOADING_TEXT, footer: fitFooter(heading) }
       if (load.status === 'error') return { kind: 'text', body: `${load.message}${ERROR_HINT_BACK}`, footer: fitFooter(heading) }
       const footer = fitFooter(`${heading}　${formatJstTime(load.data.generatedAt)}時点　${DEPARTURES_HINT}`)
-      return { kind: 'text', body: joinRowsWithoutWrap(departureRows(load.data.directions, TEXT_INNER_WIDTH, MAX_TEXT_BYTES)), footer }
+      // 1行目は運行情報。発車予定は残りのバイト数に収まる方面まで（改行1バイトぶんも差し引く）。
+      const infoLine = trainInformationLine(load.data.trainInformation, state.refreshing, TEXT_INNER_WIDTH)
+      const rows = [infoLine, ...departureRows(load.data.directions, TEXT_INNER_WIDTH, MAX_TEXT_BYTES - utf8ByteLength(infoLine) - 1)]
+      return { kind: 'text', body: joinRowsWithoutWrap(rows), footer }
     }
   }
 }
