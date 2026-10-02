@@ -1,8 +1,8 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "departure",
-  // Shinglish11@gmail.com's Account（even-hatena-reader と同じ個人アカウント）
-  "account_id": "76cba48b749470bbf24ed00a314546da",
+  // account_id はリポジトリに書かない。デプロイ時は環境変数 CLOUDFLARE_ACCOUNT_ID で渡す
+  // （GitHub Actions では Secret から。手元では `wrangler login` 済みならアカウントは自動で決まる）。
   "main": "./.output/server/index.mjs",
   "compatibility_date": "2026-09-28",
   "compatibility_flags": ["nodejs_compat"],

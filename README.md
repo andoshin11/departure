@@ -130,7 +130,7 @@ flowchart LR
   Dev["開発者"] -->|"push / PR"| GH["GitHub"]
   GH -->|"PR・ブランチ"| CI["CI<br/>typecheck / lint / test / build"]
   GH -->|"main の api/・shared/ 変更"| Deploy["Deploy API<br/>wrangler deploy"]
-  Deploy --> Workers["Cloudflare Workers<br/>departure.shinglish11.workers.dev"]
+  Deploy --> Workers["Cloudflare Workers<br/>（本番 API）"]
 
   Dev -->|"yarn package:ehpk<br/>（.env.production）"| Ehpk[".ehpk"]
   Ehpk -->|"ポータルからアップロード"| Hub["Even Hub<br/>Private → Beta に昇格"]
