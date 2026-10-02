@@ -4,6 +4,10 @@ Even Realities G2 向けの「最寄り駅から次に発車する電車」を�
 [公共交通オープンデータ（ODPT）](https://developer.odpt.org/) の駅・駅時刻表データを使う（出典とライセンスは[「データの出典とライセンス」](#データの出典とライセンス)を参照）。
 構成は [even-hatena-reader](https://github.com/andoshin11/even-hatena-reader) を踏襲している。
 
+![シミュレーターでの操作デモ（駅一覧 → 路線一覧 → 発車予定）](docs/demo.gif)
+
+シミュレーターで撮影したもの（`yarn workspace @departure/glasses demo:gif` で再生成できる。[glasses/README.md](glasses/README.md#デモ-gifyarn-demogif) 参照）。
+
 | ディレクトリ | 内容 |
 | --- | --- |
 | [`glasses/`](glasses/README.md) | G2 アプリ本体（Vite + TypeScript + `@evenrealities/even_hub_sdk`） |
