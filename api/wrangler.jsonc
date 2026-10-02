@@ -1,6 +1,8 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "departure",
+  // Shinglish11@gmail.com's Account（even-hatena-reader と同じ個人アカウント）
+  "account_id": "76cba48b749470bbf24ed00a314546da",
   "main": "./.output/server/index.mjs",
   "compatibility_date": "2026-09-28",
   "compatibility_flags": ["nodejs_compat"],
@@ -12,9 +14,8 @@
   "kv_namespaces": [
     {
       "binding": "CACHE",
-      // `wrangler kv namespace create departure-cache` の出力 id に置き換えること（README 参照）。
-      // deploy-api.yml はこのプレースホルダーが残っているとデプロイを失敗させる。
-      "id": "REPLACE_WITH_KV_NAMESPACE_ID"
+      // `wrangler kv namespace create departure-cache` で作成（KV namespace: departure-cache）
+      "id": "919f3bfff0ac45bba27c2e91666977f1"
     }
   ]
 }
