@@ -1,6 +1,6 @@
 import { pxTruncate } from '@evenrealities/pretext'
 import { utf8ByteLength } from './textByteLimit'
-import type { Departure, DirectionDepartures, NearbyStation, StationRailway } from '@departure/shared'
+import type { Departure, DirectionDepartures, NearbyStation, StationRailway, TrainInformation } from '@departure/shared'
 
 /** 発車予定の各行の字下げ（方面名の行と区別するため） */
 const DEPARTURE_INDENT = '　'
@@ -63,4 +63,26 @@ export function departureRows(directions: DirectionDepartures[], rowWidthPx: num
     rows.push(...group)
   }
   return rows
+}
+
+/**
+ * 発車予定画面の1行目に出す運行情報。
+ * - 状態（odpt:trainInformationStatus）がある場合（東京メトロの遅延時など）は「状態（原因）」を、
+ *   無い場合は運行情報の文章をそのまま使う。データの言い回しは変えない（基本ライセンス 第4条2項(2)）。
+ * - データの生成時刻（dc:date）を必ず添える（開発者ガイドライン 2.1.1）。
+ * - 1行に収まらない部分は pxTruncate で切り詰める（グラスの1行に収めるため。全文は ODPT の運行情報を参照）。
+ */
+export function trainInformationLine(info: TrainInformation, refreshing: boolean, rowWidthPx: number): string {
+  let line: string
+  if (refreshing) {
+    line = '運行情報を更新中…'
+  } else if (info.kind === 'available') {
+    const summary = info.status !== null ? `${info.status}${info.cause !== null ? `（${info.cause}）` : ''}` : info.text
+    line = `運行情報 ${formatJstTime(info.date)} ${summary}`
+  } else if (info.kind === 'unavailable') {
+    line = '運行情報はありません'
+  } else {
+    line = '運行情報を取得できませんでした'
+  }
+  return pxTruncate(line, rowWidthPx)
 }

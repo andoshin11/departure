@@ -56,6 +56,7 @@ describe('planScreen: departures', () => {
     railway: { ...station.railways[0]!, railwayName: '銀座線' },
     railwayCursor: null,
     load: { status: 'loading' },
+    refreshing: false,
   }
 
   it('読み込み中・エラーでも footer に駅名と路線名を出す', () => {
@@ -65,10 +66,11 @@ describe('planScreen: departures', () => {
     expect(error.body).toContain('DOUBLE_CLICK で戻る')
   })
 
-  it('方面ごとに発車予定を並べ、footer に取得時刻（JST）を出す', () => {
+  it('1行目に運行情報、続いて方面ごとの発車予定を並べ、footer に取得時刻（JST）を出す', () => {
     const state: AppState = { ...base, load: { status: 'ready', data: makeDepartures(base.railway.stationId) } }
     const plan = planScreen(state)
     expect(plan.body.split('\n')).toEqual([
+      '運行情報 11:59 現在、平常どおり運転しています。',
       '浅草方面',
       '　12:03 各停 浅草',
       '　12:06 各停 浅草',
@@ -78,5 +80,12 @@ describe('planScreen: departures', () => {
       '　12:07 各停 渋谷',
     ])
     expect(plan.footer).toContain('12:00時点')
+  })
+
+  it('自動更新中は運行情報の行を「更新中」に差し替え、発車予定は表示したまま', () => {
+    const state: AppState = { ...base, load: { status: 'ready', data: makeDepartures(base.railway.stationId) }, refreshing: true }
+    const rows = planScreen(state).body.split('\n')
+    expect(rows[0]).toBe('運行情報を更新中…')
+    expect(rows[1]).toBe('浅草方面')
   })
 })

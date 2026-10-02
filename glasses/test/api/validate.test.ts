@@ -59,3 +59,30 @@ describe('validateDeparturesResponse', () => {
     expect(() => validateDeparturesResponse(body)).toThrow(field)
   })
 })
+
+describe('validateDeparturesResponse: trainInformation', () => {
+  const id = 'odpt.Station:A.B.C'
+  it.each([
+    ['unavailable', { kind: 'unavailable' }],
+    ['error', { kind: 'error' }],
+  ])('%s はそのまま通す', (_label, trainInformation) => {
+    expect(validateDeparturesResponse({ ...makeDepartures(id), trainInformation }).trainInformation).toEqual(trainInformation)
+  })
+
+  it.each([
+    ['trainInformation が無い', undefined, 'trainInformation'],
+    ['kind が不明', { kind: 'unknown' }, 'trainInformation.kind'],
+    [
+      '有効期限が日時でない',
+      { kind: 'available', text: 'x', status: null, cause: null, date: '2026-09-28T02:59:00Z', validUntil: 'soon' },
+      'trainInformation.validUntil',
+    ],
+    [
+      '状態が数値',
+      { kind: 'available', text: 'x', status: 1, cause: null, date: '2026-09-28T02:59:00Z', validUntil: '2026-09-28T03:04:00Z' },
+      'trainInformation.status',
+    ],
+  ])('%s → ApiError', (_label, trainInformation, field) => {
+    expect(() => validateDeparturesResponse({ ...makeDepartures(id), trainInformation })).toThrow(field)
+  })
+})

@@ -67,6 +67,9 @@ async function main() {
 
   let state: AppState = createInitialState()
   let exitDialogPending = false
+  // 運行情報の有効期限に INFO_EXPIRED を届けるタイマー。予約し直すときは前のものを取り消す
+  // （取り消し漏れで古いタイマーが届いても、reducer が validUntil を照合して無視する）。
+  let infoExpiryTimer: ReturnType<typeof setTimeout> | undefined
 
   function runEffects(effects: Effect[]): void {
     for (const effect of effects) {
@@ -97,6 +100,16 @@ async function main() {
               dispatch({ type: 'DEPARTURES_LOAD_FAILED', stationId: effect.stationId, message: errorMessage(err) })
             })
           break
+        case 'SCHEDULE_INFO_EXPIRY': {
+          clearTimeout(infoExpiryTimer)
+          // 期限ちょうどに取り直すと ODPT 側の更新前の情報が返ることがあるため、少しだけ遅らせる
+          const delayMs = Math.max(Date.parse(effect.validUntil) - Date.now(), 0) + 1000
+          infoExpiryTimer = setTimeout(
+            () => dispatch({ type: 'INFO_EXPIRED', stationId: effect.stationId, validUntil: effect.validUntil }),
+            delayMs,
+          )
+          break
+        }
         case 'EXIT':
           exitDialogPending = true
           void bridge.shutDownPageContainer(1)

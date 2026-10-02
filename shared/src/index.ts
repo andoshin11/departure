@@ -60,6 +60,29 @@ export interface DirectionDepartures {
   departures: Departure[]
 }
 
+/**
+ * 路線の運行情報（ODPT の odpt:TrainInformation）。
+ * - available: 有効期限内の運行情報がある
+ * - unavailable: ODPT にその路線の運行情報が無い、または有効期限（dct:valid）切れ
+ * - error: 取得に失敗した（発車予定は時刻表どおりに返す）
+ */
+export type TrainInformation =
+  | {
+      kind: 'available'
+      /** odpt:trainInformationText.ja（そのまま） */
+      text: string
+      /** odpt:trainInformationStatus.ja（例: 遅延、ダイヤ乱れ）。東京メトロの平常時や都営には無い */
+      status: string | null
+      /** odpt:trainInformationCause.ja（例: 荷物挟まり）。無ければ null */
+      cause: string | null
+      /** データ生成時刻 dc:date（ISO 8601）。画面に表示する（開発者ガイドライン 2.1.1） */
+      date: string
+      /** 有効期限 dct:valid（ISO 8601）。これを過ぎた情報は表示しない（開発者ガイドライン 2.1.2） */
+      validUntil: string
+    }
+  | { kind: 'unavailable' }
+  | { kind: 'error' }
+
 /** GET /api/departures?station=<StationRailway.stationId> */
 export interface DeparturesResponse {
   stationId: string
@@ -68,4 +91,6 @@ export interface DeparturesResponse {
   /** 計算に使った現在時刻（ISO 8601） */
   generatedAt: string
   directions: DirectionDepartures[]
+  /** その路線の運行情報。発車予定は時刻表どおりの予定なので、遅延等はここで伝える */
+  trainInformation: TrainInformation
 }

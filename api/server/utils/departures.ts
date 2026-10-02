@@ -1,5 +1,5 @@
-import { MAX_DEPARTURES_PER_DIRECTION, type Departure, type DirectionDepartures } from '@departure/shared'
-import type { OdptStationTimetable, OdptTimetableEntry } from '#server/utils/odpt-parser'
+import { MAX_DEPARTURES_PER_DIRECTION, type Departure, type DirectionDepartures, type TrainInformation } from '@departure/shared'
+import type { OdptStationTimetable, OdptTimetableEntry, OdptTrainInformation } from '#server/utils/odpt-parser'
 import { calendarCandidates, departureMinutes, nextDate, type ServiceMoment } from '#server/utils/service-day'
 
 /** 名前解決（owl:sameAs → 日本語名）の結果。ODPT に該当データが無い ID は含まれない */
@@ -140,3 +140,38 @@ export function buildDirections(input: BuildDirectionsInput): DirectionDeparture
       return { directionName, departures }
     })
 }
+
+/**
+ * 路線の運行情報を選ぶ。開発者ガイドライン 2.1.2 に従い、有効期限（dct:valid）を過ぎた情報は使わない。
+ * 有効期限が無い情報は、表示してよい期間が判断できないため使わない（onDiscard で理由を通知する）。
+ * 同じ路線の情報が複数ある場合は、生成時刻（dc:date）が最も新しいものを使う。
+ */
+export function selectTrainInformation(
+  records: OdptTrainInformation[],
+  railwayId: string,
+  now: Date,
+  onDiscard?: (reason: string) => void,
+): TrainInformation {
+  const candidates = records
+    .filter((r) => r.railwayId === railwayId)
+    .sort((a, b) => Date.parse(b.date) - Date.parse(a.date))
+  const latest = candidates[0]
+  if (!latest) return { kind: 'unavailable' }
+  if (latest.validUntil === null) {
+    onDiscard?.(`no dct:valid for ${railwayId}`)
+    return { kind: 'unavailable' }
+  }
+  if (Date.parse(latest.validUntil) <= now.getTime()) {
+    onDiscard?.(`expired (dct:valid=${latest.validUntil}) for ${railwayId}`)
+    return { kind: 'unavailable' }
+  }
+  return {
+    kind: 'available',
+    text: latest.text,
+    status: latest.status,
+    cause: latest.cause,
+    date: latest.date,
+    validUntil: latest.validUntil,
+  }
+}
+

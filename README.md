@@ -20,7 +20,7 @@ Even Realities G2 向けの「最寄り駅から次に発車する電車」を�
 
 1. **駅一覧**: Even App（スマートフォン）の現在地から半径 1km 以内の駅を近い順に表示。ODPT の駅は路線ごとなので、同じ駅名はまとめる。
 2. **路線一覧**: 選んだ駅に乗り入れている路線。1路線しかなければこの画面は出ない。
-3. **発車予定**: 方面ごとに、次に発車する列車を最大3本（時刻・種別・行き先）。CLICK で最新に更新。
+3. **発車予定**: 1行目に路線の運行情報（遅延等）、続いて方面ごとに次に発車する列車を最大3本（時刻・種別・行き先）。CLICK で最新に更新。運行情報は有効期限が来ると自動で更新する。
 
 ## アーキテクチャ
 
@@ -88,9 +88,14 @@ sequenceDiagram
   alt キャッシュなし
     API->>ODPT: odpt:Station / RailDirection / TrainType（10件ずつ）
   end
+  API->>KV: 路線の運行情報（60秒キャッシュ）
+  alt キャッシュなし
+    API->>ODPT: odpt:TrainInformation（路線指定）
+  end
   API->>API: JST の運行日・カレンダーを判定し、方面ごとに次の3本を選ぶ
-  API-->>App: 方面ごとの発車予定
+  API-->>App: 方面ごとの発車予定 + 運行情報（有効期限つき）
   App-->>User: グラスに表示
+  Note over App: 運行情報の有効期限が来たら<br/>自動で取り直す
 ```
 
 - **「次の電車」の計算はリクエストごとにサーバーの時計（JST）で行う**。時刻表と名称はキャッシュするが、レスポンス自体は現在時刻に依存するのでキャッシュしない。
@@ -169,13 +174,13 @@ Node.js は `.nvmrc`（24）を使う。
 
 | 提供者 | データセット | ライセンス |
 | --- | --- | --- |
-| 東京地下鉄株式会社（東京メトロ） | [駅情報](https://ckan.odpt.org/dataset/r_station-tokyometro)、[駅時刻表](https://ckan.odpt.org/dataset/r_station_timetable-tokyometro)、[路線系統情報](https://ckan.odpt.org/dataset/r_route-tokyometro) | [公共交通オープンデータ基本ライセンス](https://developer.odpt.org/terms/data_basic_license.html) |
-| 東京都交通局（都営） | [駅情報](https://ckan.odpt.org/dataset/r_station-toei)、[駅時刻表](https://ckan.odpt.org/dataset/r_station_timetable-toei)、[路線系統情報](https://ckan.odpt.org/dataset/r_route-toei) | [クリエイティブ・コモンズ・ライセンス 表示 4.0 国際（CC BY 4.0）](https://creativecommons.org/licenses/by/4.0/deed.ja) |
+| 東京地下鉄株式会社（東京メトロ） | [駅情報](https://ckan.odpt.org/dataset/r_station-tokyometro)、[駅時刻表](https://ckan.odpt.org/dataset/r_station_timetable-tokyometro)、[路線系統情報](https://ckan.odpt.org/dataset/r_route-tokyometro)、[運行情報](https://ckan.odpt.org/dataset/r_train_status-tokyometro) | [公共交通オープンデータ基本ライセンス](https://developer.odpt.org/terms/data_basic_license.html) |
+| 東京都交通局（都営） | [駅情報](https://ckan.odpt.org/dataset/r_station-toei)、[駅時刻表](https://ckan.odpt.org/dataset/r_station_timetable-toei)、[路線系統情報](https://ckan.odpt.org/dataset/r_route-toei)、[運行情報](https://ckan.odpt.org/dataset/r_train_status-toei) | [クリエイティブ・コモンズ・ライセンス 表示 4.0 国際（CC BY 4.0）](https://creativecommons.org/licenses/by/4.0/deed.ja) |
 
 東京都交通局のデータについてのクレジット表記（このアプリは時刻表から次の発車予定を選んで表示するため、改変して利用しています）:
 
 > このアプリは、以下の著作物を改変して利用しています。
-> 東京都交通局・公共交通オープンデータ協議会、東京都交通局 駅情報・駅時刻表・路線系統情報、クリエイティブ・コモンズ・ライセンス　表示4.0国際（https://creativecommons.org/licenses/by/4.0/deed.ja）
+> 東京都交通局・公共交通オープンデータ協議会、東京都交通局 駅情報・駅時刻表・路線系統情報・運行情報、クリエイティブ・コモンズ・ライセンス　表示4.0国際（https://creativecommons.org/licenses/by/4.0/deed.ja）
 
 ### 遵守している規約
 
