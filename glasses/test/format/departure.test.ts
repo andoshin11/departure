@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { getTextWidth } from '@evenrealities/pretext'
 import { departureLine, departureRows, formatDistance, formatJstTime, railwayLabel, stationLabel } from '../../src/format/departure'
 import { MAX_TEXT_BYTES, TEXT_INNER_WIDTH } from '../../src/constants'

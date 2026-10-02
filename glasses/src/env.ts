@@ -34,5 +34,5 @@ export function readEnvConfig(): EnvConfig {
     )
   }
 
-  return { apiBaseUrl, apiKey, devFixedLocation: import.meta.env.DEV ? (import.meta.env.VITE_DEV_FIXED_LOCATION || null) : null }
+  return { apiBaseUrl, apiKey, devFixedLocation: import.meta.env.DEV ? import.meta.env.VITE_DEV_FIXED_LOCATION || null : null }
 }

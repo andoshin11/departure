@@ -121,7 +121,11 @@ async function main() {
           return
         }
 
-        const ok = await renderPlanOrShowError(() => planScreen(nextState), (plan) => renderer.render(plan), `dispatch(${event.type})`)
+        const ok = await renderPlanOrShowError(
+          () => planScreen(nextState),
+          (plan) => renderer.render(plan),
+          `dispatch(${event.type})`,
+        )
         if (!ok) return
 
         state = nextState
@@ -130,7 +134,11 @@ async function main() {
       .catch((err) => console.error('dispatch failed:', err))
   }
 
-  const initialOk = await renderPlanOrShowError(() => planScreen(state), (plan) => renderer.render(plan), 'initial render')
+  const initialOk = await renderPlanOrShowError(
+    () => planScreen(state),
+    (plan) => renderer.render(plan),
+    'initial render',
+  )
   if (initialOk) runEffects(initialEffects)
 
   const unsubscribe = bridge.onEvenHubEvent((event) => {
@@ -141,7 +149,13 @@ async function main() {
       // ダイアログが表示された合図。ホスト側でページは一度クリアされているので、
       // 現在の画面をそのまま rebuild して復旧する（reducer には通さない）。
       chain = chain
-        .then(() => renderPlanOrShowError(() => planScreen(state), (plan) => renderer.redrawCurrent(plan), 'redraw after exit dialog'))
+        .then(() =>
+          renderPlanOrShowError(
+            () => planScreen(state),
+            (plan) => renderer.redrawCurrent(plan),
+            'redraw after exit dialog',
+          ),
+        )
         .catch((err) => console.error('redraw after exit dialog failed:', err))
       return
     }

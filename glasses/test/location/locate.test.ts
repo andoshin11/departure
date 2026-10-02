@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { AppLocationAccuracy } from '@evenrealities/even_hub_sdk'
 import { LocationError, locate, parseFixedLocation } from '../../src/location/locate'
 import { LOCATION_TIMEOUT_MS } from '../../src/constants'

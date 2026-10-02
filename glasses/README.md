@@ -1,6 +1,6 @@
 # 次の電車 (glasses/)
 
-Even Realities G2 向けの「最寄り駅から次の電車」アプリ。`@evenrealities/even_hub_sdk` + `@evenrealities/pretext` を使った Vite + TypeScript アプリ。描画・イベント処理の基盤（Text コンテナ2つ + 自前カーソル、reducer / plan / executor の分離、999バイトガード）は even-hatena-reader と同じ。
+Even Realities G2 向けの「最寄り駅から次の電車」アプリ。`@evenrealities/even_hub_sdk` + `@evenrealities/pretext` を使った TypeScript アプリ。ツールチェーンは [Vite+](https://viteplus.dev/)（`vp`）で、開発サーバー・ビルド・テスト・lint・フォーマット・型チェックを1つの CLI と `vite.config.ts` にまとめている。描画・イベント処理の基盤（Text コンテナ2つ + 自前カーソル、reducer / plan / executor の分離、999バイトガード）は even-hatena-reader と同じ。
 
 ## セットアップ
 
@@ -10,7 +10,7 @@ cp .env.example .env
 # VITE_API_KEY: api/ の NUXT_API_KEY と同じ値
 ```
 
-- `VITE_API_BASE_URL` / `VITE_API_KEY` は必須。`vite build` は未設定なら失敗し、`vite dev` は起動時にエラー画面を出す。
+- `VITE_API_BASE_URL` / `VITE_API_KEY` は必須。本番ビルド（`yarn build`）は未設定なら失敗し、`yarn dev` は起動時にエラー画面を出す。
 - `VITE_API_BASE_URL` の origin は `app.json` の `permissions[network].whitelist` に含まれている必要がある（`vite-plugins/check-network-whitelist.ts` が dev/build で検証）。本番（`https://departure.shinglish11.workers.dev`）とローカル開発用（`http://localhost:3000`）を登録している。Even Hub へ公開申請する場合は、未使用の `http://localhost:3000` を外すこと。
 - 環境ごとの値は `.env`（`yarn dev` / シミュレーター。ローカルの api を指す）と `.env.production`（`yarn build` / `yarn package:ehpk`。本番 URL と、Worker secret `NUXT_API_KEY` と同じ値）に置く（どちらも `.gitignore` 済み）。
 - `VITE_API_KEY` は `.ehpk` にそのまま埋め込まれる。個人利用前提の簡易的なアクセス制限であり、強固な秘匿ではない（ODPT のアクセストークンはアプリに含まれず、api/ 側だけが持つ）。
@@ -19,7 +19,7 @@ cp .env.example .env
 
 Even App の `bridge.getAppLocation`（高精度、タイムアウト10秒）で1回取得する。`app.json` に `location` 権限を宣言している。取得できなければエラー画面を出し、CLICK で再試行する（自動リトライはしない）。
 
-**シミュレーターには位置情報 API が無い**ため、開発時は `.env.development` に `VITE_DEV_FIXED_LOCATION=緯度,経度` を書くと、その座標を現在地として使う（`vite dev` のときだけ有効。`vite build` で設定されているとビルドを失敗させる）。
+**シミュレーターには位置情報 API が無い**ため、開発時は `.env.development` に `VITE_DEV_FIXED_LOCATION=緯度,経度` を書くと、その座標を現在地として使う（`yarn dev` のときだけ有効。本番ビルドで設定されているとビルドを失敗させる）。
 
 ```bash
 echo 'VITE_DEV_FIXED_LOCATION=35.6580,139.7016' > .env.development
@@ -28,18 +28,18 @@ echo 'VITE_DEV_FIXED_LOCATION=35.6580,139.7016' > .env.development
 ## 開発
 
 ```bash
-yarn dev          # Vite dev server (http://localhost:5173)
+yarn dev          # vp dev (http://localhost:5173)
 yarn simulator    # evenhub-simulator
 npx evenhub qr --url "http://<LAN IP>:5173"   # 実機（Even App でスキャン）
 ```
 
 ## 画面と操作
 
-| 画面 | SCROLL | CLICK | DOUBLE_CLICK | アプリに戻ったとき |
-| --- | --- | --- | --- | --- |
-| 駅一覧 | カーソル移動（7件/ページ） | 路線一覧へ（1路線なら発車予定へ直接）。エラー・0件なら現在地から再検索 | 終了 | 現在地から再検索（選んでいた駅名にカーソルを戻す） |
-| 路線一覧 | カーソル移動 | 発車予定へ | 駅一覧へ（カーソル位置を保持、再検索しない） | — |
-| 発車予定 | —（はみ出した分はネイティブスクロール） | 最新に更新 / エラー時は再試行 | 路線一覧へ（スキップしてきた場合は駅一覧へ） | 最新に更新 |
+| 画面     | SCROLL                                  | CLICK                                                                  | DOUBLE_CLICK                                 | アプリに戻ったとき                                 |
+| -------- | --------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------- | -------------------------------------------------- |
+| 駅一覧   | カーソル移動（7件/ページ）              | 路線一覧へ（1路線なら発車予定へ直接）。エラー・0件なら現在地から再検索 | 終了                                         | 現在地から再検索（選んでいた駅名にカーソルを戻す） |
+| 路線一覧 | カーソル移動                            | 発車予定へ                                                             | 駅一覧へ（カーソル位置を保持、再検索しない） | —                                                  |
+| 発車予定 | —（はみ出した分はネイティブスクロール） | 最新に更新 / エラー時は再試行                                          | 路線一覧へ（スキップしてきた場合は駅一覧へ） | 最新に更新                                         |
 
 発車予定画面の表示例:
 
@@ -58,15 +58,28 @@ npx evenhub qr --url "http://<LAN IP>:5173"   # 実機（Even App でスキャ�
 
 ## スクリプト
 
-| コマンド | 内容 |
-| --- | --- |
-| `yarn dev` | Vite dev server |
-| `yarn build` | `tsc --noEmit` → whitelist 検証 → `vite build` |
-| `yarn typecheck` | `tsc --noEmit`（`src`・`test`） |
-| `yarn lint` | ESLint |
-| `yarn test` | `vitest run` |
-| `yarn package:ehpk` | `yarn build` → `evenhub pack ... -o departure.ehpk --sdk-ver 0.0.16` |
-| `yarn simulator` | `evenhub-simulator http://localhost:5173` |
+| コマンド            | 内容                                                                    |
+| ------------------- | ----------------------------------------------------------------------- |
+| `yarn dev`          | `vp dev`（開発サーバー）                                                |
+| `yarn build`        | `vp lint`（lint + 型チェック）→ `vp build`（whitelist 検証込み）        |
+| `yarn check`        | `vp check`（フォーマット確認 + lint + 型チェック）。CI はこれを実行する |
+| `yarn lint`         | `vp lint`（Oxlint + tsgolint による型チェック）                         |
+| `yarn fmt`          | `vp fmt`（Oxfmt で整形して書き込む）                                    |
+| `yarn test`         | `vp test`（Vitest。設定は `vitest.config.ts`）                          |
+| `yarn package:ehpk` | `yarn build` → `evenhub pack ... -o departure.ehpk --sdk-ver 0.0.16`    |
+| `yarn simulator`    | `evenhub-simulator http://localhost:5173`                               |
+
+### Vite+ の導入方法（このモノレポでの注意点）
+
+- `vp migrate` はワークスペースのルートでしか実行できず、`api/`（Nuxt）まで移行対象になるため、glasses だけ手動で導入している。
+  - `glasses/package.json` の devDependencies で `vite` を `npm:@voidzero-dev/vite-plus-core` に、`vitest` を `vite-plus` 同梱のバージョンに固定している。ドキュメントの手順（ルートの `resolutions`）に従うと、`api/` が使う `vite` / `vitest` まで差し替わってしまうため。
+  - さらに `installConfig.hoistingLimits: "workspaces"` で glasses の依存をルートに巻き上げないようにしている。これが無いと Yarn の node-modules linker がエイリアスをルートの `node_modules/vite` に置き、`api/` からも vite-plus-core が見えてしまう。
+  - `yarn install` で出る `vite is listed by your project with version 1.0.0 ... doesn't satisfy ...`（YN0060）は、エイリアス先のバージョン番号（1.0.0）が peer dependency の範囲判定に使われるための警告で、動作には影響しない。
+- `vite-plus` を更新するときは、`vite`（エイリアスのバージョン）と `vitest` のピンも `vite-plus` の依存に合わせて更新すること（`npm view vite-plus@<version> dependencies`）。
+- lint の設定は旧 ESLint 設定（eslint:recommended + typescript-eslint recommended）相当。Oxlint の `correctness` に含まれない typescript-eslint recommended のルールは `vite.config.ts` で個別に有効化している（存在しないルール名を書くと `vp lint` がエラーになる）。
+- 型チェックは Oxlint の型チェック（`lint.options.typeCheck`。tsgolint / TypeScript Go）で行い、`tsc --noEmit` は使わない。tsgolint は TypeScript 7 系なので、`devDependencies` の `typescript`（5.9.3）はエディタ向け。
+  - ドキュメントにある型チェックだけの実行（`vp check --no-fmt --no-lint`）は、このワークスペース構成では「No checks enabled」で失敗するため使わない（原因は未確認。ドキュメントにある「ワークスペースのパッケージからは root の lint 設定を使う」挙動との関係を疑っているが、検証していない）。`vp lint` が型チェックも行う。
+- `vite-plugins/check-network-whitelist.ts` の本番ビルド判定は `command === 'build' && mode === 'production'`。Oxlint / Oxfmt が `vite.config.ts` の `lint` / `fmt` ブロックを読むときに、`resolveConfig(..., 'build')` を mode=development で呼ぶため。
 
 ## 構成
 

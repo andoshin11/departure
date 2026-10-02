@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { buildInternalErrorPlan, renderPlanOrShowError } from '../../src/render/renderGuard'
 import type { ScreenPlan } from '../../src/render/plan'
 
@@ -54,19 +54,16 @@ describe('renderPlanOrShowError', () => {
     expect(calledWith.body).toContain('DOUBLE_CLICK で戻る')
     expect(calledWith).not.toBe(NORMAL_PLAN)
     expect(consoleError).toHaveBeenCalled()
-    expect(consoleError.mock.calls.some((args) => String(args[0]).includes('my-label') && String(args[0]).includes('planScreen failed'))).toBe(
-      true,
-    )
+    expect(
+      consoleError.mock.calls.some((args) => String(args[0]).includes('my-label') && String(args[0]).includes('planScreen failed')),
+    ).toBe(true)
   })
 
   it('producePlan は成功・renderFn が reject: (通常 plan → 内部エラー plan) の順に2回呼ばれ、false を返す', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     const renderErr = new Error('render boom')
     const producePlan = vi.fn(() => NORMAL_PLAN)
-    const renderFn = vi
-      .fn<(plan: ScreenPlan) => Promise<void>>()
-      .mockRejectedValueOnce(renderErr)
-      .mockResolvedValueOnce(undefined)
+    const renderFn = vi.fn<(plan: ScreenPlan) => Promise<void>>().mockRejectedValueOnce(renderErr).mockResolvedValueOnce(undefined)
 
     const ok = await renderPlanOrShowError(producePlan, renderFn, 'label')
 
@@ -98,11 +95,13 @@ describe('renderPlanOrShowError', () => {
     expect(calledWith.body).toContain('Error')
 
     // planScreen failed のログと、内部エラー画面の描画そのものが失敗したログの両方が出る
-    expect(consoleError.mock.calls.some((args) => String(args[0]).includes('startup') && String(args[0]).includes('planScreen failed'))).toBe(
-      true,
-    )
     expect(
-      consoleError.mock.calls.some((args) => String(args[0]).includes('startup') && String(args[0]).includes('failed to render internal error screen')),
+      consoleError.mock.calls.some((args) => String(args[0]).includes('startup') && String(args[0]).includes('planScreen failed')),
+    ).toBe(true)
+    expect(
+      consoleError.mock.calls.some(
+        (args) => String(args[0]).includes('startup') && String(args[0]).includes('failed to render internal error screen'),
+      ),
     ).toBe(true)
   })
 })

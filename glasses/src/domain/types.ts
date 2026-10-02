@@ -1,9 +1,6 @@
 import type { DeparturesResponse, NearbyStation, StationRailway } from '@departure/shared'
 
-export type Load<T> =
-  | { status: 'loading' }
-  | { status: 'error'; message: string }
-  | { status: 'ready'; data: T }
+export type Load<T> = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; data: T }
 
 /** 駅一覧画面の読み込みは「現在地の取得」→「最寄り駅の検索」の2段階 */
 export type StationsLoad =

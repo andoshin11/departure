@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { planScreen } from '../../src/render/plan'
 import { createInitialState } from '../../src/domain/reducer'
 import type { AppState, DeparturesState } from '../../src/domain/types'

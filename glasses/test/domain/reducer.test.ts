@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { createInitialState, initialEffects, reduce } from '../../src/domain/reducer'
 import type { AppState, DeparturesState, RailwaysState, StationsState } from '../../src/domain/types'
 import { makeDepartures, makeStation } from '../fixtures/data'
@@ -38,7 +38,9 @@ describe('stations 画面', () => {
   })
 
   it('LOCATE_FAILED / NEARBY_LOAD_FAILED はエラー表示になる', () => {
-    expect(reduce(createInitialState(), { type: 'LOCATE_FAILED', message: 'x' }).state).toMatchObject({ load: { status: 'error', message: 'x' } })
+    expect(reduce(createInitialState(), { type: 'LOCATE_FAILED', message: 'x' }).state).toMatchObject({
+      load: { status: 'error', message: 'x' },
+    })
     const searching: StationsState = { screen: 'stations', load: { status: 'loading', step: 'searching' }, cursor: 0 }
     expect(reduce(searching, { type: 'NEARBY_LOAD_FAILED', message: 'y' }).state).toMatchObject({ load: { status: 'error', message: 'y' } })
   })
@@ -71,7 +73,13 @@ describe('stations 画面', () => {
 
   it('路線が1つの駅を CLICK すると路線選択をスキップして発車予定を取得する', () => {
     const r = reduce(readyStations(1), { type: 'CLICK' })
-    expect(r.state).toMatchObject({ screen: 'departures', station: ebisu, railway: ebisu.railways[0], railwayCursor: null, load: { status: 'loading' } })
+    expect(r.state).toMatchObject({
+      screen: 'departures',
+      station: ebisu,
+      railway: ebisu.railways[0],
+      railwayCursor: null,
+      load: { status: 'loading' },
+    })
     expect(r.effects).toEqual([{ type: 'FETCH_DEPARTURES', stationId: ebisu.railways[0]!.stationId }])
   })
 
@@ -139,7 +147,9 @@ describe('departures 画面', () => {
 
   it('DEPARTURES_LOADED で表示する。stationId が違う・読み込み中でない場合は無視する', () => {
     const data = makeDepartures(stationId)
-    expect(reduce(departuresState(), { type: 'DEPARTURES_LOADED', stationId, data }).state).toMatchObject({ load: { status: 'ready', data } })
+    expect(reduce(departuresState(), { type: 'DEPARTURES_LOADED', stationId, data }).state).toMatchObject({
+      load: { status: 'ready', data },
+    })
 
     const s = departuresState()
     expect(reduce(s, { type: 'DEPARTURES_LOADED', stationId: 'other', data }).state).toBe(s)
@@ -167,7 +177,12 @@ describe('departures 画面', () => {
   })
 
   it('路線選択をスキップしてきた場合、DOUBLE_CLICK で駅一覧に戻る', () => {
-    const s: AppState = departuresState({ station: ebisu, railway: ebisu.railways[0]!, railwayCursor: null, origin: { data: { stations }, cursor: 1 } })
+    const s: AppState = departuresState({
+      station: ebisu,
+      railway: ebisu.railways[0]!,
+      railwayCursor: null,
+      origin: { data: { stations }, cursor: 1 },
+    })
     expect(reduce(s, { type: 'DOUBLE_CLICK' }).state).toEqual(readyStations(1))
   })
 

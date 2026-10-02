@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { API_KEY_HEADER } from '@departure/shared'
 import { ApiError, createApiClient } from '../../src/api/client'
 import { makeDepartures, makeStation } from '../fixtures/data'

@@ -23,7 +23,11 @@ function commonStatusMessage(status: number): string | undefined {
  * レスポンスは shared の契約型に対して薄い実行時検証をかけ、不一致なら ApiError で fail-fast する。
  */
 export function createApiClient(baseUrl: string, apiKey: string, fetchImpl: typeof fetch = fetch): ApiClient {
-  async function request<T>(path: string, validate: (data: unknown) => T, statusMessage: (status: number) => string | undefined): Promise<T> {
+  async function request<T>(
+    path: string,
+    validate: (data: unknown) => T,
+    statusMessage: (status: number) => string | undefined,
+  ): Promise<T> {
     let res: Response
     try {
       res = await fetchImpl(`${baseUrl}${path}`, { headers: { [API_KEY_HEADER]: apiKey } })

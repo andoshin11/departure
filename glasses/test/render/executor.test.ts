@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import type { EvenAppBridge } from '@evenrealities/even_hub_sdk'
 import { ScreenRenderer, buildTextContainers } from '../../src/render/executor'
 import { buildInternalErrorPlan } from '../../src/render/renderGuard'
@@ -79,11 +79,13 @@ const NORMAL_PLAN: ScreenPlan = { kind: 'text', body: '通常の本文', footer:
  * ScreenRenderer が実際に呼ぶ3メソッド（createStartUpPageContainer/rebuildPageContainer/
  * textContainerUpgrade）だけを持つモックを EvenAppBridge にキャストして渡す。
  */
-function makeMockBridge(overrides: {
-  createStartUpPageContainer?: ReturnType<typeof vi.fn>
-  rebuildPageContainer?: ReturnType<typeof vi.fn>
-  textContainerUpgrade?: ReturnType<typeof vi.fn>
-} = {}): EvenAppBridge {
+function makeMockBridge(
+  overrides: {
+    createStartUpPageContainer?: ReturnType<typeof vi.fn>
+    rebuildPageContainer?: ReturnType<typeof vi.fn>
+    textContainerUpgrade?: ReturnType<typeof vi.fn>
+  } = {},
+): EvenAppBridge {
   return {
     createStartUpPageContainer: overrides.createStartUpPageContainer ?? vi.fn().mockResolvedValue(0),
     rebuildPageContainer: overrides.rebuildPageContainer ?? vi.fn().mockResolvedValue(true),

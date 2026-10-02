@@ -1,4 +1,11 @@
-import type { Departure, DeparturesResponse, DirectionDepartures, NearbyStation, NearbyStationsResponse, StationRailway } from '@departure/shared'
+import type {
+  Departure,
+  DeparturesResponse,
+  DirectionDepartures,
+  NearbyStation,
+  NearbyStationsResponse,
+  StationRailway,
+} from '@departure/shared'
 import { ApiError } from './errors'
 
 // shared/src/index.ts の契約型に対する薄い実行時検証。

@@ -21,7 +21,7 @@ function originOf(url: string): string {
  * 含まれているかを検証し、あわせて必須の環境変数（VITE_API_BASE_URL / VITE_API_KEY）が
  * 本番ビルドで欠落していないかを検証する vite plugin。
  *
- * - `vite build`: VITE_API_BASE_URL / VITE_API_KEY のいずれかが未設定なら即エラー（本番ビルドは必須設定）。
+ * - 本番ビルド（`vp build`、mode=production）: VITE_API_BASE_URL / VITE_API_KEY のいずれかが未設定なら即エラー（本番ビルドは必須設定）。
  *   開発専用の VITE_DEV_FIXED_LOCATION が設定されている場合もエラー（現在地固定の配布物を作らないため）。
  * - `vite dev` / `vite build` 共通: VITE_API_BASE_URL が設定されている場合、その origin が
  *   app.json の whitelist に含まれていなければエラー（審査・実機で確実に失敗するため fail-fast）。
@@ -35,7 +35,11 @@ export function checkNetworkWhitelist(): Plugin {
       const apiBaseUrl = resolvedConfig.env.VITE_API_BASE_URL as string | undefined
       const apiKey = resolvedConfig.env.VITE_API_KEY as string | undefined
 
-      if (resolvedConfig.command === 'build') {
+      // 本番ビルドの判定は command と mode の両方で行う。Vite+ の lint/fmt（Oxlint/Oxfmt）は
+      // vite.config.ts の lint/fmt ブロックを読むために resolveConfig(..., 'build') を
+      // mode=development で呼ぶため、command だけで判定すると設定の読み込み時に誤発火する。
+      const isProductionBuild = resolvedConfig.command === 'build' && resolvedConfig.mode === 'production'
+      if (isProductionBuild) {
         const missing = [!apiBaseUrl && 'VITE_API_BASE_URL', !apiKey && 'VITE_API_KEY'].filter((v): v is string => Boolean(v))
         if (resolvedConfig.env.VITE_DEV_FIXED_LOCATION) {
           throw new Error(
