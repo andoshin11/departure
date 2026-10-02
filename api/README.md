@@ -69,7 +69,7 @@ yarn workspace @departure/api lint
 
 ### 初回のみ必要な作業
 
-1. `wrangler kv namespace create departure-cache` で KV namespace を作り、`wrangler.jsonc` の `REPLACE_WITH_KV_NAMESPACE_ID` を出力された id に置き換える（残っているとデプロイ workflow が失敗する）。
-2. Cloudflare API Token（権限: Workers Scripts: Edit, Workers KV Storage: Edit）を発行し、GitHub Secrets に `CLOUDFLARE_API_TOKEN` として登録する。必要なら `wrangler.jsonc` に `account_id` を追加する。
+1. **KV namespace**（2026-10-02 実施済み）: `wrangler kv namespace create departure-cache` で作成し、id を `wrangler.jsonc` に記入済み。作り直した場合は id を更新すること（プレースホルダー `REPLACE_WITH_KV_NAMESPACE_ID` が残っているとデプロイ workflow が失敗する）。
+2. **Cloudflare API Token**（2026-10-02 実施済み）: アカウント API トークン `departure-deploy`（権限: Workers Scripts: Edit のみ、有効期限 2027-10-03）を発行し、GitHub Secrets の `CLOUDFLARE_API_TOKEN` に登録済み。期限前に同じ手順で再発行し、secret を更新すること。トークンがアカウントを列挙できないため、`wrangler.jsonc` に `account_id` を明記している。
 3. `NUXT_API_KEY` / `NUXT_ODPT_CONSUMER_KEY` を Worker secret に設定する。
 4. デプロイ後の `https://departure.<サブドメイン>.workers.dev` を `glasses/app.json` の network whitelist と `glasses/.env.production` に設定する。
