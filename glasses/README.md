@@ -11,7 +11,8 @@ cp .env.example .env
 ```
 
 - `VITE_API_BASE_URL` / `VITE_API_KEY` は必須。`vite build` は未設定なら失敗し、`vite dev` は起動時にエラー画面を出す。
-- `VITE_API_BASE_URL` の origin は `app.json` の `permissions[network].whitelist` に含まれている必要がある（`vite-plugins/check-network-whitelist.ts` が dev/build で検証）。現在は `http://localhost:3000` のみ。本番の workers.dev URL が決まったら追加すること。
+- `VITE_API_BASE_URL` の origin は `app.json` の `permissions[network].whitelist` に含まれている必要がある（`vite-plugins/check-network-whitelist.ts` が dev/build で検証）。本番（`https://departure.shinglish11.workers.dev`）とローカル開発用（`http://localhost:3000`）を登録している。Even Hub へ公開申請する場合は、未使用の `http://localhost:3000` を外すこと。
+- 環境ごとの値は `.env`（`yarn dev` / シミュレーター。ローカルの api を指す）と `.env.production`（`yarn build` / `yarn package:ehpk`。本番 URL と、Worker secret `NUXT_API_KEY` と同じ値）に置く（どちらも `.gitignore` 済み）。
 - `VITE_API_KEY` は `.ehpk` にそのまま埋め込まれる。個人利用前提の簡易的なアクセス制限であり、強固な秘匿ではない（ODPT のアクセストークンはアプリに含まれず、api/ 側だけが持つ）。
 
 ### 現在地

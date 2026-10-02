@@ -14,7 +14,7 @@
     {
       "name": "network",
       "desc": "最寄り駅と電車の発車予定（公共交通オープンデータ）を取得します。",
-      "whitelist": ["http://localhost:3000"]
+      "whitelist": ["https://departure.shinglish11.workers.dev", "http://localhost:3000"]
     }
   ]
 }
