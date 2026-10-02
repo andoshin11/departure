@@ -69,6 +69,22 @@ npx evenhub qr --url "http://<LAN IP>:5173"   # 実機（Even App でスキャ�
 | `yarn test`         | `vp test`（Vitest。設定は `vitest.config.ts`）                                    |
 | `yarn package:ehpk` | `yarn build` → `scripts/pack.ts`（パッケージ用 app.json を作って `evenhub pack`） |
 | `yarn simulator`    | `evenhub-simulator http://localhost:5173`                                         |
+| `yarn demo:gif`     | シミュレーターを操作・撮影してデモ GIF（`docs/demo.gif`）を作る                   |
+
+### デモ GIF（`yarn demo:gif`）
+
+実機（グラス）の画面はキャプチャしにくいため、シミュレーターの Automation API（`--automation-port`）で `scripts/demo-gif.ts` のシナリオどおりに入力を送りながらグラス画面を連続キャプチャし、操作名と解説の字幕を付けた GIF にする。
+
+```bash
+yarn workspace @departure/api dev        # 別ターミナルで api/ を起動しておく
+yarn workspace @departure/glasses demo:gif [出力パス]   # 既定は docs/demo.gif
+```
+
+- ffmpeg が必要（字幕は macOS のヒラギノ角ゴシックを使う）。
+- glasses の dev サーバー（5174）とシミュレーター（Automation API 9898）はスクリプトが起動・終了する。現在地は銀座駅付近に固定する（`--mode demo` で起動するため `.env.development` は読まれない）。
+- 発車予定は実際の時刻表を撮るので、昼間に実行すると見栄えがよい（深夜は「翌05:04」のような始発が並ぶ）。
+- シナリオ（操作・字幕・表示時間）は `SCENARIO` を編集する。アプリでエラー（未捕捉例外・fetch 失敗）が出たら撮影を中止する。
+- フレームと ffmpeg の作業ファイルは `glasses/.demo/`（gitignore 済み）に残る。
 
 ### Vite+ の導入方法（このモノレポでの注意点）
 

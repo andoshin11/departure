@@ -14,3 +14,4 @@ dist/
 *.ehpk
 .DS_Store
 .pack/
+.demo/

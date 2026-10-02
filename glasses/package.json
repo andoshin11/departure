@@ -11,7 +11,8 @@
     "fmt": "vp fmt",
     "test": "vp test",
     "package:ehpk": "yarn build && node scripts/pack.ts",
-    "simulator": "evenhub-simulator http://localhost:5173"
+    "simulator": "evenhub-simulator http://localhost:5173",
+    "demo:gif": "node scripts/demo-gif.ts"
   },
   "dependencies": {
     "@departure/shared": "workspace:*",
