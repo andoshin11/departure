@@ -44,7 +44,7 @@ const SCENARIO: Step[] = [
   { action: 'up', holdMs: 1000 },
   { action: 'click', caption: ['CLICK', '駅を決定すると乗り入れている路線の一覧へ'], waitForChange: true, holdMs: 1800 },
   { action: 'down', caption: ['SCROLL ↓', '路線を選ぶ'], holdMs: 1000 },
-  { action: 'click', caption: ['CLICK', '方面ごとに次に発車する列車を3本ずつ表示'], waitForChange: true, holdMs: 3500 },
+  { action: 'click', caption: ['CLICK', '運行情報と、方面ごとに次に発車する列車を3本ずつ表示'], waitForChange: true, holdMs: 3500 },
   { action: 'click', caption: ['CLICK', '最新の発車予定に更新'], holdMs: 2000 },
   { action: 'double_click', caption: ['DOUBLE_CLICK', 'ひとつ前の画面に戻る'], waitForChange: true, holdMs: 1200 },
   { action: 'double_click', waitForChange: true, holdMs: 2500 },
@@ -184,8 +184,25 @@ const endedAt = Date.now() - startedAt
 stopChildren()
 
 // ---- GIF 生成 ----
+/**
+ * 何も描画されていないスクリーンショットか。シミュレーターの PNG は未描画の画素も RGB が 0 ではない
+ * （緑・アルファ 0）ため、アルファチャンネルだけを取り出して全画素 0 かどうかで判定する。
+ */
+function isBlank(png: Buffer): boolean {
+  const alpha = spawnSync(
+    'ffmpeg',
+    ['-loglevel', 'error', '-i', 'pipe:0', '-vf', 'alphaextract', '-f', 'rawvideo', '-pix_fmt', 'gray', 'pipe:1'],
+    {
+      input: png,
+      maxBuffer: DISPLAY_W * DISPLAY_H * 2,
+    },
+  )
+  if (alpha.status !== 0) fail(`スクリーンショットのアルファ取得に失敗しました: ${alpha.stderr.toString()}`)
+  return alpha.stdout.every((value) => value === 0)
+}
+
 // 起動直後の何も描画されていないフレームは捨てる
-const firstDrawn = frames.findIndex((f) => f.hash !== frames[0]?.hash)
+const firstDrawn = frames.findIndex((f) => !isBlank(f.png))
 if (firstDrawn < 0) fail('画面が一度も描画されませんでした')
 const t0 = frames[firstDrawn]!.t
 const kept = frames.slice(firstDrawn)
@@ -215,7 +232,8 @@ const chain = [
   `drawbox=x=0:y=${DISPLAY_H + PAD * 2}:w=${width}:h=${CAPTION_H}:color=0x1c1c1c:t=fill`,
 ]
 for (const [i, { t, caption }] of captions.entries()) {
-  const from = Math.max(0, (t - t0) / 1000)
+  // 最初の字幕は GIF の先頭から出す（撮影開始より少し後に記録されるため）
+  const from = i === 0 ? 0 : Math.max(0, (t - t0) / 1000)
   const to = i + 1 < captions.length ? (captions[i + 1]!.t - t0) / 1000 : 1e9
   const enable = `enable='between(t,${from.toFixed(2)},${to.toFixed(2)})'`
   caption.forEach((text, line) => writeFileSync(path.join(workDir, `caption-${i}-${line}.txt`), text))
